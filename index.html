@@ -184,8 +184,33 @@
     font-family:var(--mono);font-size:12px;line-height:1.5;border-radius:8px;padding:10px;resize:vertical;
   }
   .codeView{color:var(--text-dim);min-height:110px;max-height:180px;}
-  .codeInput{min-height:160px;flex:1;color:var(--text);}
-  .codeInput:focus{outline:none;border-color:var(--accent-dim);}
+  .mutedNote{color:var(--text-dim);font-size:12px;padding:4px 0 10px;line-height:1.5;}
+
+  /* CSS property rows */
+  .styleRows{display:flex;flex-direction:column;gap:6px;}
+  .styleRow{display:flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;}
+  .styleRow .styleRowLabel{flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--accent);min-width:0;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .styleRow input,.styleRow select{flex:1;min-width:0;background:var(--bg-3);border:1px solid var(--line);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;font-family:var(--sans);}
+  .styleRow input[type=color]{flex:0 0 34px;padding:2px;height:28px;}
+  .styleRow input[type=number]{flex:0 0 64px;}
+  .styleRow .rmBtn{flex:0 0 auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;}
+  .styleRow .rmBtn:hover{color:var(--danger);}
+  .addRow{display:flex;gap:6px;margin-top:2px;}
+  .addRow select{flex:1;background:var(--bg-2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 8px;font-size:12.5px;}
+  .smallBtn{background:var(--accent);border:none;color:#0b1210;font-weight:700;border-radius:6px;padding:0 12px;cursor:pointer;font-size:12px;white-space:nowrap;}
+  .smallBtn:hover{background:#7cf0d3;}
+
+  /* JS scratch-style blocks */
+  .blockList{display:flex;flex-direction:column;gap:8px;}
+  .jsBlock{border-radius:9px;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+  .jsBlockHead{display:flex;align-items:center;gap:8px;}
+  .jsBlockHead .jsBlockLabel{flex:1;font-size:12.5px;font-weight:800;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.25);}
+  .jsBlockHead button{background:rgba(0,0,0,.22);border:none;color:#fff;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;flex:0 0 auto;}
+  .jsBlockHead button:hover{background:rgba(0,0,0,.4);}
+  .jsBlockFields{display:flex;flex-direction:column;gap:5px;margin-top:7px;}
+  .jsBlockFields label{display:block;font-size:10.5px;color:rgba(255,255,255,.85);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+  .jsBlockFields input{width:100%;border:none;border-radius:5px;padding:6px 7px;font-size:12.5px;background:rgba(255,255,255,.92);color:#1a1a1a;font-family:var(--sans);box-sizing:border-box;}
+  .emptyBlocks{color:var(--text-dim);font-size:12px;padding:10px 0;text-align:center;border:1px dashed var(--line);border-radius:8px;}
 
   /* TODO */
   #todoPane{padding:14px;display:flex;flex-direction:column;gap:10px;height:100%;}
@@ -396,16 +421,33 @@
         </div>
       </div>
       <div id="cssPane" class="hidden codePane">
-        <div class="panel-title" style="padding:0;">CSS generado (por elementos)</div>
+        <div class="panel-title" style="padding:0;">🌐 Estilos globales de la página</div>
+        <div id="globalStyleRows" class="styleRows"></div>
+        <div class="addRow">
+          <select id="addGlobalPropSelect"></select>
+          <button id="addGlobalPropBtn" class="smallBtn">+ Agregar</button>
+        </div>
+        <div class="panel-title" style="padding:14px 0 0;">✨ Estilo avanzado del elemento seleccionado</div>
+        <div id="elStyleSection">
+          <div id="elStyleNone" class="mutedNote">Selecciona un elemento en el lienzo para agregarle estilos avanzados.</div>
+          <div id="elStyleRows" class="styleRows hidden"></div>
+          <div class="addRow hidden" id="addElPropRow">
+            <select id="addElPropSelect"></select>
+            <button id="addElPropBtn" class="smallBtn">+ Agregar</button>
+          </div>
+        </div>
+        <div class="panel-title" style="padding:14px 0 0;">CSS generado</div>
         <textarea id="generatedCSSView" class="codeView" readonly spellcheck="false"></textarea>
-        <div class="panel-title" style="padding:0;">Tu CSS personalizado</div>
-        <textarea id="customCSSInput" class="codeInput" spellcheck="false" placeholder="/* Escribe aquí tu propio CSS. Se añadirá al final del style.css exportado. */"></textarea>
       </div>
       <div id="jsPane" class="hidden codePane">
-        <div class="panel-title" style="padding:0;">JS generado (base)</div>
+        <div class="panel-title" style="padding:0;">🧩 Al cargar la página, hacer:</div>
+        <div id="jsBlockList" class="blockList"></div>
+        <div class="addRow">
+          <select id="addBlockSelect"></select>
+          <button id="addBlockBtn" class="smallBtn">+ Añadir bloque</button>
+        </div>
+        <div class="panel-title" style="padding:14px 0 0;">JS generado</div>
         <textarea id="generatedJSView" class="codeView" readonly spellcheck="false"></textarea>
-        <div class="panel-title" style="padding:0;">Tu JS personalizado</div>
-        <textarea id="customJSInput" class="codeInput" spellcheck="false" placeholder="// Escribe aquí tu propio JavaScript. Se añadirá al final del script.js exportado."></textarea>
       </div>
       <div id="todoPane" class="hidden">
         <div class="panel-title" style="padding:0;">Lista de tareas del proyecto</div>
@@ -457,8 +499,9 @@
   let selectedId = null;
   let idCounter = 1;
   let todoCounter = 1;
-  let customCSS = '';     // user-written CSS, appended verbatim to style.css
-  let customJS = '';      // user-written JS, appended verbatim to script.js
+  let globalStyles = {}; // page-wide CSS props chosen from the CSS tab, e.g. {'background-color':'#ffffff'}
+  let jsBlocks = [];     // scratch-style "on page load" blocks, e.g. [{id,type,params:{...}}]
+  let blockIdCounter = 1;
 
   /* placement / move / resize / rotate modes (tap-based, no dragging of whole objects) */
   let placeType = null;      // component type armed from palette, waiting for a canvas tap
@@ -493,7 +536,8 @@
     document.getElementById('cssPane').classList.toggle('hidden', tab!=='css');
     document.getElementById('jsPane').classList.toggle('hidden', tab!=='js');
     document.getElementById('todoPane').classList.toggle('hidden', tab!=='todo');
-    if(tab==='css' || tab==='js') refreshCodePreviews();
+    if(tab==='css'){ renderCSSPane(); refreshCodePreviews(); }
+    if(tab==='js'){ renderJSPane(); refreshCodePreviews(); }
   }
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click',()=> activateTab(btn.dataset.tab));
@@ -616,7 +660,7 @@
       placeholder: d.placeholder || '',
       color: d.color, bg: d.bg,
       fontSize: d.fontSize, radius: d.radius,
-      domId: '', onclick: ''
+      domId: '', onclick: '', extraStyles: {}
     });
     elements.push(el);
     renderAll();
@@ -625,6 +669,14 @@
   }
 
   /* ============ RENDER CANVAS ============ */
+  function applyGlobalStylesPreview(){
+    const frame = document.getElementById('canvasFrame');
+    frame.removeAttribute('style');
+    Object.keys(globalStyles).forEach(prop=>{
+      frame.style.setProperty(prop, globalStyles[prop]);
+    });
+  }
+
   function renderAll(){
     canvas.innerHTML = '';
     canvasEmptyHint.classList.toggle('hidden', elements.length>0);
@@ -634,6 +686,7 @@
       canvas.appendChild(node);
     });
     renderExplorer();
+    applyGlobalStylesPreview();
     document.getElementById('statElCount').textContent = elements.length;
   }
 
@@ -758,6 +811,11 @@
     node.style.userSelect = 'none';
     node.style.transform = 'rotate(' + (el.rotation||0) + 'deg)';
     if(el.type==='button'){ node.style.border='none'; node.style.cursor='pointer'; node.style.fontWeight='600'; }
+    if(el.extraStyles){
+      Object.keys(el.extraStyles).forEach(prop=>{
+        node.style.setProperty(prop, el.extraStyles[prop]);
+      });
+    }
   }
 
   function escapeHtml(s){
@@ -989,6 +1047,7 @@
   function selectElement(id){
     selectedId = id;
     renderAll();
+    if(!document.getElementById('cssPane').classList.contains('hidden')){ renderElStyles(); refreshCodePreviews(); }
     const insp = document.getElementById('inspector');
     const none = document.getElementById('noSelection');
     if(!id){ insp.classList.add('hidden'); none.classList.remove('hidden'); document.getElementById('statSelected').textContent='Nada seleccionado'; return; }
@@ -1073,14 +1132,213 @@
     }
   });
 
-  /* ============ CUSTOM CSS / JS ============ */
-  const customCSSInput = document.getElementById('customCSSInput');
-  const customJSInput = document.getElementById('customJSInput');
-  customCSSInput.addEventListener('input', ()=>{ customCSS = customCSSInput.value; });
-  customJSInput.addEventListener('input', ()=>{ customJS = customJSInput.value; });
+  /* ============ CSS BUILDER (structured, no raw code needed) ============ */
+  const GLOBAL_CSS_PROPS = [
+    {key:'background-color', label:'Color de fondo de la página', type:'color', default:'#ffffff'},
+    {key:'font-family', label:'Tipografía', type:'select', default:'Inter, sans-serif',
+      options:[["Inter, -apple-system, sans-serif","Inter (moderna)"],["Georgia, serif","Georgia (clásica)"],["'Courier New', monospace","Monoespaciada"],["'Comic Sans MS', cursive","Divertida"],["'Times New Roman', serif","Times New Roman"]]},
+    {key:'cursor', label:'Cursor por defecto', type:'select', default:'default',
+      options:[['default','Normal'],['pointer','Mano'],['grab','Agarrar'],['not-allowed','Prohibido']]}
+  ];
+  const ELEMENT_CSS_PROPS = [
+    {key:'opacity', label:'Opacidad (0 a 1)', type:'number', step:'0.1', min:'0', max:'1', default:'1'},
+    {key:'border', label:'Borde (ej: 2px solid #333333)', type:'text', default:'2px solid #333333'},
+    {key:'box-shadow', label:'Sombra (ej: 0 4px 12px rgba(0,0,0,.3))', type:'text', default:'0 4px 12px rgba(0,0,0,.3)'},
+    {key:'font-weight', label:'Grosor del texto', type:'select', default:'700',
+      options:[['400','Normal'],['600','Semi-negrita'],['700','Negrita'],['900','Extra negrita']]},
+    {key:'text-align', label:'Alineación de texto', type:'select', default:'center',
+      options:[['left','Izquierda'],['center','Centro'],['right','Derecha']]},
+    {key:'text-decoration', label:'Decoración de texto', type:'select', default:'underline',
+      options:[['none','Ninguna'],['underline','Subrayado'],['line-through','Tachado']]},
+    {key:'line-height', label:'Altura de línea', type:'text', default:'1.4'},
+    {key:'cursor', label:'Cursor al pasar el mouse', type:'select', default:'pointer',
+      options:[['pointer','Mano'],['default','Normal'],['grab','Agarrar'],['not-allowed','Prohibido']]},
+    {key:'transition', label:'Transición suave (ej: all .2s ease)', type:'text', default:'all .2s ease'},
+    {key:'z-index', label:'Orden de capa (z-index)', type:'number', default:'1'},
+    {key:'filter', label:'Filtro visual (ej: blur(2px), grayscale(1))', type:'text', default:'blur(2px)'}
+  ];
+
+  function propDefFor(list, key){ return list.find(p=>p.key===key); }
+
+  function buildValueInput(def, value){
+    if(def.type==='select'){
+      let html = `<select data-prop="${def.key}">`;
+      def.options.forEach(([val,label])=>{
+        html += `<option value="${val}" ${val===value?'selected':''}>${label}</option>`;
+      });
+      html += `</select>`;
+      return html;
+    }
+    if(def.type==='color'){
+      return `<input type="color" data-prop="${def.key}" value="${value||def.default}">`;
+    }
+    if(def.type==='number'){
+      return `<input type="number" data-prop="${def.key}" value="${value!==undefined?value:def.default}" step="${def.step||1}" ${def.min!==undefined?`min="${def.min}"`:''} ${def.max!==undefined?`max="${def.max}"`:''}>`;
+    }
+    return `<input type="text" data-prop="${def.key}" value="${(value!==undefined?value:def.default).toString().replace(/"/g,'&quot;')}">`;
+  }
+
+  function renderStyleRows(container, list, styleMap, onChange, onRemove){
+    container.innerHTML = '';
+    Object.keys(styleMap).forEach(key=>{
+      const def = propDefFor(list, key);
+      if(!def) return;
+      const row = document.createElement('div');
+      row.className = 'styleRow';
+      row.innerHTML = `<span class="styleRowLabel">${def.label}</span>${buildValueInput(def, styleMap[key])}<button class="rmBtn" title="Quitar">✕</button>`;
+      row.querySelector('[data-prop]').addEventListener('input', e=>{
+        styleMap[key] = e.target.value;
+        onChange();
+      });
+      row.querySelector('.rmBtn').addEventListener('click', ()=>{
+        delete styleMap[key];
+        onRemove();
+      });
+      container.appendChild(row);
+    });
+  }
+
+  function populateAddSelect(select, list, styleMap){
+    select.innerHTML = '';
+    const available = list.filter(p=>!(p.key in styleMap));
+    if(available.length===0){
+      select.innerHTML = '<option>Ya agregaste todas</option>';
+      select.disabled = true;
+      return;
+    }
+    select.disabled = false;
+    available.forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p.key; opt.textContent = p.label;
+      select.appendChild(opt);
+    });
+  }
+
+  const globalStyleRowsEl = document.getElementById('globalStyleRows');
+  const addGlobalPropSelect = document.getElementById('addGlobalPropSelect');
+  function renderGlobalStyles(){
+    renderStyleRows(globalStyleRowsEl, GLOBAL_CSS_PROPS, globalStyles, ()=>{ applyGlobalStylesPreview(); refreshCodePreviews(); }, ()=>{ renderGlobalStyles(); applyGlobalStylesPreview(); refreshCodePreviews(); });
+    populateAddSelect(addGlobalPropSelect, GLOBAL_CSS_PROPS, globalStyles);
+  }
+  document.getElementById('addGlobalPropBtn').addEventListener('click', ()=>{
+    if(addGlobalPropSelect.disabled) return;
+    const key = addGlobalPropSelect.value;
+    const def = propDefFor(GLOBAL_CSS_PROPS, key);
+    globalStyles[key] = def.default;
+    renderGlobalStyles();
+    applyGlobalStylesPreview();
+    refreshCodePreviews();
+  });
+
+  const elStyleRowsEl = document.getElementById('elStyleRows');
+  const addElPropSelect = document.getElementById('addElPropSelect');
+  function renderElStyles(){
+    const has = !!selectedId;
+    document.getElementById('elStyleNone').classList.toggle('hidden', has);
+    elStyleRowsEl.classList.toggle('hidden', !has);
+    document.getElementById('addElPropRow').classList.toggle('hidden', !has);
+    if(!has) return;
+    const el = elements.find(x=>x.id===selectedId);
+    if(!el) return;
+    if(!el.extraStyles) el.extraStyles = {};
+    renderStyleRows(elStyleRowsEl, ELEMENT_CSS_PROPS, el.extraStyles, ()=>{ renderAll(); refreshCodePreviews(); }, ()=>{ renderElStyles(); renderAll(); refreshCodePreviews(); });
+    populateAddSelect(addElPropSelect, ELEMENT_CSS_PROPS, el.extraStyles);
+  }
+  document.getElementById('addElPropBtn').addEventListener('click', ()=>{
+    if(!selectedId || addElPropSelect.disabled) return;
+    const el = elements.find(x=>x.id===selectedId);
+    if(!el) return;
+    const key = addElPropSelect.value;
+    const def = propDefFor(ELEMENT_CSS_PROPS, key);
+    if(!el.extraStyles) el.extraStyles = {};
+    el.extraStyles[key] = def.default;
+    renderElStyles();
+    renderAll();
+    refreshCodePreviews();
+  });
+
+  function renderCSSPane(){
+    renderGlobalStyles();
+    renderElStyles();
+  }
+
+  /* ============ JS BLOCK EDITOR (Scratch-style, no raw code needed) ============ */
+  const BLOCK_DEFS = {
+    alert:  {label:'💬 Mostrar un mensaje', color:'#ff9a5a', fields:[{key:'message', label:'Mensaje', default:'¡Hola!'}]},
+    log:    {label:'🖨️ Escribir en la consola', color:'#5b6ef5', fields:[{key:'message', label:'Mensaje', default:'Hola'}]},
+    redirect:{label:'🔗 Ir a una página web', color:'#5ee6c3', fields:[{key:'url', label:'URL', default:'https://'}]},
+    wait:   {label:'⏱️ Esperar unos segundos', color:'#9297a8', fields:[{key:'seconds', label:'Segundos', default:'1'}]},
+    setText:{label:'✏️ Cambiar el texto de un elemento', color:'#ff6b6b', fields:[{key:'domId', label:'ID del elemento', default:''},{key:'text', label:'Nuevo texto', default:''}]},
+    setBg:  {label:'🎨 Cambiar el color de fondo de un elemento', color:'#c15ee6', fields:[{key:'domId', label:'ID del elemento', default:''},{key:'color', label:'Color (ej: #ff9a5a)', default:'#ff9a5a'}]},
+    toggleVis:{label:'👁️ Mostrar / ocultar un elemento', color:'#e6c15e', fields:[{key:'domId', label:'ID del elemento', default:''}]}
+  };
+
+  const jsBlockListEl = document.getElementById('jsBlockList');
+  const addBlockSelect = document.getElementById('addBlockSelect');
+  Object.keys(BLOCK_DEFS).forEach(type=>{
+    const opt = document.createElement('option');
+    opt.value = type; opt.textContent = BLOCK_DEFS[type].label;
+    addBlockSelect.appendChild(opt);
+  });
+  document.getElementById('addBlockBtn').addEventListener('click', ()=>{
+    const type = addBlockSelect.value;
+    const def = BLOCK_DEFS[type];
+    const params = {};
+    def.fields.forEach(f=>{ params[f.key] = f.default; });
+    jsBlocks.push({id:'b'+(blockIdCounter++), type, params});
+    renderJSBlocks();
+    refreshCodePreviews();
+  });
+
+  function renderJSBlocks(){
+    jsBlockListEl.innerHTML = '';
+    if(jsBlocks.length===0){
+      jsBlockListEl.innerHTML = '<div class="emptyBlocks">Aún no hay bloques. Agrega uno abajo 👇</div>';
+      return;
+    }
+    jsBlocks.forEach((block, idx)=>{
+      const def = BLOCK_DEFS[block.type];
+      const el = document.createElement('div');
+      el.className = 'jsBlock';
+      el.style.background = def.color;
+      let fieldsHtml = '';
+      def.fields.forEach(f=>{
+        fieldsHtml += `<label>${f.label}</label><input type="text" data-field="${f.key}" value="${(block.params[f.key]||'').toString().replace(/"/g,'&quot;')}">`;
+      });
+      el.innerHTML = `
+        <div class="jsBlockHead">
+          <span class="jsBlockLabel">${def.label}</span>
+          <button data-act="up" title="Subir">↑</button>
+          <button data-act="down" title="Bajar">↓</button>
+          <button data-act="del" title="Eliminar">✕</button>
+        </div>
+        <div class="jsBlockFields">${fieldsHtml}</div>`;
+      el.querySelectorAll('[data-field]').forEach(inp=>{
+        inp.addEventListener('input', ()=>{ block.params[inp.dataset.field] = inp.value; refreshCodePreviews(); });
+      });
+      el.querySelector('[data-act="del"]').addEventListener('click', ()=>{
+        jsBlocks = jsBlocks.filter(b=>b.id!==block.id);
+        renderJSBlocks(); refreshCodePreviews();
+      });
+      el.querySelector('[data-act="up"]').addEventListener('click', ()=>{
+        if(idx===0) return;
+        [jsBlocks[idx-1], jsBlocks[idx]] = [jsBlocks[idx], jsBlocks[idx-1]];
+        renderJSBlocks(); refreshCodePreviews();
+      });
+      el.querySelector('[data-act="down"]').addEventListener('click', ()=>{
+        if(idx===jsBlocks.length-1) return;
+        [jsBlocks[idx+1], jsBlocks[idx]] = [jsBlocks[idx], jsBlocks[idx+1]];
+        renderJSBlocks(); refreshCodePreviews();
+      });
+      jsBlockListEl.appendChild(el);
+    });
+  }
+
+  function renderJSPane(){ renderJSBlocks(); }
+
   function refreshCodePreviews(){
-    document.getElementById('generatedCSSView').value = generateCSS(true);
-    document.getElementById('generatedJSView').value = generateJS(true);
+    document.getElementById('generatedCSSView').value = generateCSS();
+    document.getElementById('generatedJSView').value = generateJS();
   }
 
   /* ============ TODO ============ */
@@ -1173,7 +1431,7 @@
     }
   }
 
-  function generateCSS(generatedOnly){
+  function generateCSS(){
     let out = `* { box-sizing: border-box; }
 body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; background:#ffffff; }
 #app-root { position: relative; width: 960px; height: 600px; margin: 0 auto; overflow:hidden; }
@@ -1184,6 +1442,11 @@ body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; back
 .sc-text, .sc-heading, .sc-link, .sc-checkbox { display:flex; align-items:center; }
 .sc-link { text-decoration:underline; cursor:pointer; }
 `;
+    if(Object.keys(globalStyles).length){
+      out += `body {\n`;
+      Object.keys(globalStyles).forEach(k=>{ out += `  ${k}: ${globalStyles[k]};\n`; });
+      out += `}\n`;
+    }
     elements.forEach(el=>{
       const sel = '#' + (el.domId || el.id);
       out += `${sel} {
@@ -1196,31 +1459,46 @@ body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; back
   font-size: ${el.fontSize}px;
   border-radius: ${el.radius}px;
   padding: ${el.type==='button'?'0 10px':'0'};
-}
+`;
+      if(el.extraStyles){
+        Object.keys(el.extraStyles).forEach(k=>{ out += `  ${k}: ${el.extraStyles[k]};\n`; });
+      }
+      out += `}
 `;
     });
-    if(!generatedOnly && customCSS.trim()){
-      out += `
-/* ===== Tu CSS personalizado ===== */
-` + customCSS + `
-`;
-    }
     return out;
   }
 
-  function generateJS(generatedOnly){
-    let out = `// Código generado por SimpleCode
-// Aquí puedes añadir tu propia lógica personalizada.
-document.addEventListener('DOMContentLoaded', function(){
-  console.log('Proyecto "${(document.getElementById('projectNameInput').value||'MiProyecto').replace(/"/g,'')}" cargado ✔');
-});
+  /* Turns the "Al cargar la página" blocks into real JS. Blocks after a "wait" block
+     run inside the same async sequence so they execute in the order shown. */
+  function blockToJsLine(block){
+    const p = block.params;
+    const esc = s => (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
+    switch(block.type){
+      case 'alert': return `  alert('${esc(p.message)}');`;
+      case 'log': return `  console.log('${esc(p.message)}');`;
+      case 'redirect': return `  window.location.href = '${esc(p.url)}';`;
+      case 'wait': return `  await esperar(${parseFloat(p.seconds)||0});`;
+      case 'setText': return `  { const el = document.getElementById('${esc(p.domId)}'); if(el) el.textContent = '${esc(p.text)}'; }`;
+      case 'setBg': return `  { const el = document.getElementById('${esc(p.domId)}'); if(el) el.style.background = '${esc(p.color)}'; }`;
+      case 'toggleVis': return `  { const el = document.getElementById('${esc(p.domId)}'); if(el) el.style.display = (el.style.display==='none' ? '' : 'none'); }`;
+      default: return '';
+    }
+  }
+  function generateJS(){
+    const needsWait = jsBlocks.some(b=>b.type==='wait');
+    let body = jsBlocks.map(blockToJsLine).filter(Boolean).join('\n');
+    let out = `// Código generado por SimpleCode a partir de tus bloques
 `;
-    if(!generatedOnly && customJS.trim()){
-      out += `
-// ===== Tu JS personalizado =====
-` + customJS + `
+    if(needsWait){
+      out += `function esperar(segundos){ return new Promise(r => setTimeout(r, segundos*1000)); }
 `;
     }
+    out += `document.addEventListener('DOMContentLoaded', ${needsWait ? 'async ' : ''}function(){
+  console.log('Proyecto "${(document.getElementById('projectNameInput').value||'MiProyecto').replace(/"/g,'')}" cargado ✔');
+${body}
+});
+`;
     return out;
   }
 
