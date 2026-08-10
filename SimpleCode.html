@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>SimpleCode</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg-0:#14161c;
+    --bg-1:#1b1e26;
+    --bg-2:#232631;
+    --bg-3:#2c2f3c;
+    --line:#343846;
+    --text:#e8e9ee;
+    --text-dim:#9297a8;
+    --accent:#5ee6c3;
+    --accent-dim:#2f6f61;
+    --accent-2:#ff9a5a;
+    --danger:#ff6b6b;
+    --mono:'JetBrains Mono','Fira Code',Consolas,monospace;
+    --sans:'Inter',-apple-system,Segoe UI,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg-0);color:var(--text);font-family:var(--sans);overflow:hidden;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  /* ===== Layout ===== */
+  #app{display:grid;grid-template-rows:48px 1fr 30px;height:100%;}
+
+  /* ---- Topbar ---- */
+  #topbar{
+    display:flex;align-items:center;gap:14px;
+    background:var(--bg-1);border-bottom:1px solid var(--line);
+    padding:0 16px;
+  }
+  #logo{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-weight:700;letter-spacing:.5px;}
+  #logo .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+  #projectNameInput{
+    background:transparent;border:1px solid transparent;color:var(--text-dim);
+    font-family:var(--mono);font-size:13px;padding:4px 8px;border-radius:6px;width:180px;
+  }
+  #projectNameInput:hover,#projectNameInput:focus{border-color:var(--line);color:var(--text);outline:none;}
+  .tabs{display:flex;gap:2px;margin-left:12px;background:var(--bg-2);padding:3px;border-radius:8px;}
+  .tab-btn{
+    border:none;background:transparent;color:var(--text-dim);font-family:var(--sans);
+    font-size:12.5px;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;
+  }
+  .tab-btn.active{background:var(--bg-3);color:var(--accent);}
+  #topbar-spacer{flex:1;}
+  .topbtn{
+    display:flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);
+    color:var(--text);font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:7px;cursor:pointer;
+  }
+  .topbtn:hover{background:var(--bg-3);border-color:#454a5c;}
+  #exportBtn{background:var(--accent);color:#0b1210;border:none;}
+  #exportBtn:hover{background:#7cf0d3;}
+  #previewBtn{color:var(--accent-2);}
+
+  /* ---- Main split ---- */
+  #main{display:grid;grid-template-columns:220px 1fr 300px;min-height:0;}
+
+  /* ---- Left: palette / explorer ---- */
+  #left{background:var(--bg-1);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;}
+  .panel-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);padding:12px 12px 6px;font-weight:700;}
+  #palette{padding:0 10px;display:flex;flex-direction:column;gap:6px;}
+  .palette-item{
+    display:flex;align-items:center;gap:9px;background:var(--bg-2);border:1px solid var(--line);
+    border-radius:8px;padding:9px 10px;cursor:grab;font-size:12.5px;font-weight:600;user-select:none;
+  }
+  .palette-item:hover{border-color:var(--accent-dim);background:var(--bg-3);}
+  .palette-item .ico{width:18px;text-align:center;color:var(--accent);font-family:var(--mono);}
+  #explorerWrap{flex:1;overflow-y:auto;border-top:1px solid var(--line);margin-top:10px;}
+  #explorer{list-style:none;margin:0;padding:6px;}
+  .exp-item{
+    display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;font-size:12px;
+    color:var(--text-dim);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .exp-item:hover{background:var(--bg-2);}
+  .exp-item.selected{background:var(--bg-3);color:var(--accent);}
+  .exp-item .exp-ico{color:var(--accent-2);font-family:var(--mono);font-size:11px;}
+
+  /* ---- Center: canvas ---- */
+  #center{position:relative;background:
+    linear-gradient(var(--bg-0) 0 0),
+    repeating-linear-gradient(0deg,#20232c 0 1px,transparent 1px 24px),
+    repeating-linear-gradient(90deg,#20232c 0 1px,transparent 1px 24px);
+    overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:30px;min-height:0;
+  }
+  #canvasFrame{
+    position:relative;width:960px;height:600px;background:#ffffff;border-radius:10px;
+    box-shadow:0 0 0 1px var(--line),0 20px 60px rgba(0,0,0,.5);overflow:hidden;flex-shrink:0;
+  }
+  #canvas{position:absolute;inset:0;overflow:hidden;}
+  .gui-el{position:absolute;box-sizing:border-box;cursor:move;}
+  .gui-el.selected{outline:2px solid var(--accent);outline-offset:2px;}
+  .resize-handle{
+    position:absolute;width:10px;height:10px;background:var(--accent);border:2px solid #0b1210;
+    right:-6px;bottom:-6px;cursor:nwse-resize;border-radius:2px;z-index:5;
+  }
+  #canvasEmptyHint{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#c8cbd4;font-family:var(--mono);font-size:13px;text-align:center;pointer-events:none;
+  }
+
+  /* ---- Right: inspector / todo ---- */
+  #right{background:var(--bg-1);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow-y:auto;}
+  .field{padding:0 14px;margin-bottom:12px;}
+  .field label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+  .field input[type=text],.field input[type=number],.field textarea,.field select{
+    width:100%;background:var(--bg-2);border:1px solid var(--line);color:var(--text);
+    padding:7px 9px;border-radius:6px;font-family:var(--sans);font-size:13px;
+  }
+  .field input[type=color]{width:100%;height:32px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:2px;}
+  .field textarea{resize:vertical;min-height:50px;}
+  .field-row{display:flex;gap:8px;padding:0 14px;margin-bottom:12px;}
+  .field-row .field{flex:1;padding:0;margin:0;}
+  #noSelection{padding:30px 16px;color:var(--text-dim);font-size:13px;text-align:center;line-height:1.6;}
+  #inspectorHeader{padding:14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+  #inspectorHeader b{font-size:13px;}
+  #deleteElBtn{background:none;border:1px solid var(--danger);color:var(--danger);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-weight:700;}
+  #deleteElBtn:hover{background:var(--danger);color:#fff;}
+
+  /* TODO */
+  #todoPane{padding:14px;display:flex;flex-direction:column;gap:10px;height:100%;}
+  #todoInputRow{display:flex;gap:6px;}
+  #todoInputRow input{flex:1;background:var(--bg-2);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:6px;font-size:13px;}
+  #todoInputRow button{background:var(--accent);border:none;color:#0b1210;font-weight:700;border-radius:6px;padding:0 14px;cursor:pointer;}
+  #todoList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
+  .todo-item{display:flex;align-items:flex-start;gap:9px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:13px;}
+  .todo-item.done .todo-text{text-decoration:line-through;color:var(--text-dim);}
+  .todo-item input[type=checkbox]{margin-top:2px;accent-color:var(--accent);width:15px;height:15px;cursor:pointer;flex-shrink:0;}
+  .todo-text{flex:1;word-break:break-word;}
+  .todo-del{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;flex-shrink:0;}
+  .todo-del:hover{color:var(--danger);}
+  #todoStats{font-size:11px;color:var(--text-dim);}
+
+  /* status bar */
+  #statusbar{background:var(--bg-1);border-top:1px solid var(--line);display:flex;align-items:center;
+    padding:0 14px;font-size:11px;color:var(--text-dim);gap:16px;font-family:var(--mono);}
+  #statusbar span b{color:var(--accent);}
+
+  /* preview modal */
+  #previewOverlay{position:fixed;inset:0;background:rgba(10,11,15,.85);display:none;align-items:center;justify-content:center;z-index:999;}
+  #previewOverlay.show{display:flex;}
+  #previewBox{width:960px;height:600px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.6);position:relative;}
+  #previewClose{position:absolute;top:-40px;right:0;background:var(--bg-2);border:1px solid var(--line);color:var(--text);
+    border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700;}
+  #previewFrame{width:100%;height:100%;border:none;}
+
+  .hidden{display:none !important;}
+
+  /* ===== Mobile bottom nav (hidden on desktop) ===== */
+  #mobileNav{display:none;}
+
+  /* ===== MOBILE LAYOUT ===== */
+  @media (max-width: 860px){
+    html,body{overflow:auto;}
+    #app{grid-template-rows:auto 1fr auto;height:100dvh;}
+
+    /* Topbar: wrap into two rows, shrink project name */
+    #topbar{flex-wrap:wrap;height:auto;padding:8px 10px;gap:8px;row-gap:6px;}
+    #logo{font-size:13px;}
+    #projectNameInput{width:110px;font-size:12px;}
+    .tabs{display:none;} /* replaced by mobile bottom nav */
+    #topbar-spacer{display:none;}
+    .topbtn{font-size:11.5px;padding:7px 10px;}
+    #previewBtn{order:3;}
+    #exportBtn{order:4;}
+
+    /* Main becomes a single stacked column; only one panel visible at a time */
+    #main{display:block;position:relative;min-height:0;overflow:hidden;height:100%;}
+    #left,#center,#right{
+      display:none;
+      width:100%;height:100%;border:none;
+      position:absolute;inset:0;
+    }
+    #left.mobile-active,#center.mobile-active,#right.mobile-active{display:flex;}
+    #center.mobile-active{display:flex;}
+    #left{flex-direction:column;}
+    #right{flex-direction:column;}
+
+    /* Canvas: scale the fixed 960x600 design surface to fit the phone width */
+    #center{padding:14px;align-items:flex-start;justify-content:center;overflow:auto;}
+    #canvasFrame{
+      width:960px;height:600px;
+      transform:scale(var(--canvas-scale, 0.34));
+      transform-origin:top left;
+      margin-bottom:calc(-600px * (1 - var(--canvas-scale, 0.34)));
+    }
+    #canvasWrap{width:calc(960px * var(--canvas-scale, 0.34));height:calc(600px * var(--canvas-scale, 0.34));position:relative;}
+
+    /* Palette items bigger for touch, tap to add */
+    .palette-item{padding:12px 12px;font-size:13.5px;cursor:pointer;}
+    #palette{padding:10px;}
+    #explorerWrap{margin-top:6px;}
+
+    /* Inspector fields: bigger tap targets */
+    .field input,.field textarea,.field select{padding:10px 10px;font-size:15px;}
+    .field-row{flex-wrap:wrap;}
+
+    /* Status bar hidden on mobile to save space (shown info lives in nav) */
+    #statusbar{font-size:10px;padding:0 10px;overflow-x:auto;white-space:nowrap;}
+
+    /* Bottom nav */
+    #mobileNav{
+      display:flex;background:var(--bg-1);border-top:1px solid var(--line);
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    }
+    .mnav-btn{
+      flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+      background:none;border:none;color:var(--text-dim);font-size:10px;font-weight:700;
+      padding:6px 2px;border-radius:8px;
+    }
+    .mnav-btn .mnav-ico{font-size:17px;line-height:1;}
+    .mnav-btn.active{color:var(--accent);background:var(--bg-2);}
+
+    /* Preview modal fits screen */
+    #previewBox{width:94vw;height:70vh;max-width:960px;}
+    #previewClose{top:-38px;}
+
+    /* Bigger resize handle for touch, scaled up so it stays a real fingertip size
+       despite the canvas being visually scaled down via transform */
+    .resize-handle{
+      width:calc(22px / var(--canvas-scale, 0.34));
+      height:calc(22px / var(--canvas-scale, 0.34));
+      right:calc(-12px / var(--canvas-scale, 0.34));
+      bottom:calc(-12px / var(--canvas-scale, 0.34));
+    }
+  }
+
+  @media (max-width:420px){
+    #projectNameInput{width:80px;}
+    .topbtn span.txt{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div id="logo"><span class="dot"></span>SimpleCode</div>
+    <input id="projectNameInput" value="MiProyecto" spellcheck="false">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="build">🧩 Diseño</button>
+      <button class="tab-btn" data-tab="todo">✅ TODO</button>
+    </div>
+    <div id="topbar-spacer"></div>
+    <button class="topbtn" id="previewBtn">▶ Vista previa</button>
+    <button class="topbtn" id="exportBtn">⬇ Descargar .zip</button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- LEFT: palette + explorer -->
+    <div id="left">
+      <div class="panel-title">Componentes (arrastra)</div>
+      <div id="palette">
+        <div class="palette-item" draggable="true" data-type="button"><span class="ico">▭</span>Botón</div>
+        <div class="palette-item" draggable="true" data-type="text"><span class="ico">T</span>Texto</div>
+        <div class="palette-item" draggable="true" data-type="heading"><span class="ico">H</span>Título</div>
+        <div class="palette-item" draggable="true" data-type="input"><span class="ico">▯</span>Campo de texto</div>
+        <div class="palette-item" draggable="true" data-type="image"><span class="ico">▧</span>Imagen</div>
+        <div class="palette-item" draggable="true" data-type="box"><span class="ico">▢</span>Panel / Div</div>
+        <div class="palette-item" draggable="true" data-type="link"><span class="ico">⇢</span>Enlace</div>
+        <div class="palette-item" draggable="true" data-type="checkbox"><span class="ico">☑</span>Casilla</div>
+      </div>
+      <div id="explorerWrap">
+        <div class="panel-title">Jerarquía</div>
+        <ul id="explorer"></ul>
+      </div>
+    </div>
+
+    <!-- CENTER: canvas -->
+    <div id="center">
+      <div id="canvasWrap">
+        <div id="canvasFrame">
+          <div id="canvas">
+            <div id="canvasEmptyHint">Arrastra un componente aquí desde la izquierda<br>para empezar a construir tu interfaz</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: inspector / todo -->
+    <div id="right">
+      <div id="buildPane">
+        <div id="noSelection">Selecciona un elemento en el lienzo o en la jerarquía para editar sus propiedades.</div>
+        <div id="inspector" class="hidden">
+          <div id="inspectorHeader">
+            <b id="inspTitle">Elemento</b>
+            <button id="deleteElBtn">Eliminar</button>
+          </div>
+          <div class="field">
+            <label>Texto / contenido</label>
+            <textarea id="propText"></textarea>
+          </div>
+          <div class="field" id="linkUrlField">
+            <label>URL (para enlaces)</label>
+            <input type="text" id="propHref" placeholder="https://...">
+          </div>
+          <div class="field" id="imgSrcField">
+            <label>URL de imagen</label>
+            <input type="text" id="propSrc" placeholder="https://...">
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Ancho (px)</label><input type="number" id="propW"></div>
+            <div class="field"><label>Alto (px)</label><input type="number" id="propH"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Color texto</label><input type="color" id="propColor"></div>
+            <div class="field"><label>Fondo</label><input type="color" id="propBg"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Tamaño fuente</label><input type="number" id="propFontSize"></div>
+            <div class="field"><label>Radio bordes</label><input type="number" id="propRadius"></div>
+          </div>
+          <div class="field">
+            <label>ID del elemento (para JS)</label>
+            <input type="text" id="propId">
+          </div>
+          <div class="field">
+            <label>Acción al hacer clic (opcional, JS)</label>
+            <textarea id="propOnClick" placeholder="alert('¡Hola!');"></textarea>
+          </div>
+        </div>
+      </div>
+      <div id="todoPane" class="hidden">
+        <div class="panel-title" style="padding:0;">Lista de tareas del proyecto</div>
+        <div id="todoInputRow">
+          <input type="text" id="todoInput" placeholder="Nueva tarea..." spellcheck="false">
+          <button id="todoAddBtn">Añadir</button>
+        </div>
+        <div id="todoStats">0 de 0 completadas</div>
+        <ul id="todoList"></ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="statusbar">
+    <span>Elementos: <b id="statElCount">0</b></span>
+    <span>Tareas: <b id="statTodoCount">0</b></span>
+    <span id="statSelected">Nada seleccionado</span>
+  </div>
+
+  <!-- MOBILE NAV -->
+  <div id="mobileNav">
+    <button class="mnav-btn" data-panel="left"><span class="mnav-ico">🧩</span>Componentes</button>
+    <button class="mnav-btn active" data-panel="center"><span class="mnav-ico">🖼️</span>Lienzo</button>
+    <button class="mnav-btn" data-panel="right" data-tab="build"><span class="mnav-ico">⚙️</span>Propiedades</button>
+    <button class="mnav-btn" data-panel="right" data-tab="todo"><span class="mnav-ico">✅</span>Tareas</button>
+  </div>
+
+</div>
+
+<!-- PREVIEW MODAL -->
+<div id="previewOverlay">
+  <div id="previewBox">
+    <button id="previewClose">Cerrar ✕</button>
+    <iframe id="previewFrame"></iframe>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ STATE ============ */
+  let elements = [];      // {id, type, x,y,w,h, text, href, src, color, bg, fontSize, radius, onclick, domId}
+  let todos = [];          // {id, text, done}
+  let selectedId = null;
+  let idCounter = 1;
+  let todoCounter = 1;
+
+  const canvas = document.getElementById('canvas');
+  const canvasEmptyHint = document.getElementById('canvasEmptyHint');
+  const explorer = document.getElementById('explorer');
+
+  const DEFAULTS = {
+    button:   {w:120,h:40,text:'Botón',color:'#ffffff',bg:'#5b6ef5',fontSize:14,radius:8},
+    text:     {w:180,h:26,text:'Texto de ejemplo',color:'#222222',bg:'#00000000',fontSize:14,radius:0},
+    heading:  {w:260,h:40,text:'Título',color:'#111111',bg:'#00000000',fontSize:28,radius:0},
+    input:    {w:200,h:38,text:'',placeholder:'Escribe aquí...',color:'#222222',bg:'#ffffff',fontSize:14,radius:6},
+    image:    {w:180,h:120,src:'https://placehold.co/300x200',color:'#000000',bg:'#eeeeee',fontSize:14,radius:6},
+    box:      {w:220,h:140,text:'',color:'#333333',bg:'#f1f1f4',fontSize:14,radius:10},
+    link:     {w:120,h:26,text:'Enlace',href:'#',color:'#3355ff',bg:'#00000000',fontSize:14,radius:0},
+    checkbox: {w:160,h:26,text:'Opción',color:'#222222',bg:'#00000000',fontSize:14,radius:0}
+  };
+
+  const TYPE_ICON = {button:'▭',text:'T',heading:'H',input:'▯',image:'▧',box:'▢',link:'⇢',checkbox:'☑'};
+  const TYPE_LABEL = {button:'Botón',text:'Texto',heading:'Título',input:'Campo',image:'Imagen',box:'Panel',link:'Enlace',checkbox:'Casilla'};
+
+  /* ============ TABS ============ */
+  function activateTab(tab){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    document.getElementById('buildPane').classList.toggle('hidden', tab!=='build');
+    document.getElementById('todoPane').classList.toggle('hidden', tab!=='todo');
+  }
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=> activateTab(btn.dataset.tab));
+  });
+
+  /* ============ MOBILE NAV ============ */
+  const isMobile = () => window.matchMedia('(max-width: 860px)').matches;
+  function showPanel(panel){
+    ['left','center','right'].forEach(p=>{
+      document.getElementById(p).classList.toggle('mobile-active', p===panel);
+    });
+    document.querySelectorAll('.mnav-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.panel===panel && (!b.dataset.tab || document.querySelector(`.tab-btn[data-tab="${b.dataset.tab}"]`).classList.contains('active')));
+    });
+    if(panel==='center') updateCanvasScale();
+  }
+  document.querySelectorAll('.mnav-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.dataset.tab) activateTab(btn.dataset.tab);
+      showPanel(btn.dataset.panel);
+      document.querySelectorAll('.mnav-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+  // initial mobile panel
+  if(isMobile()) showPanel('center');
+
+  /* ============ CANVAS SCALING (mobile) ============ */
+  const canvasCenter = document.getElementById('center');
+  function updateCanvasScale(){
+    if(!isMobile()){ document.documentElement.style.setProperty('--canvas-scale', 1); return; }
+    const availW = canvasCenter.clientWidth - 28; // minus padding
+    const scale = Math.max(0.18, Math.min(1, availW / 960));
+    document.documentElement.style.setProperty('--canvas-scale', scale.toFixed(4));
+  }
+  window.addEventListener('resize', updateCanvasScale);
+  updateCanvasScale();
+
+  /* ============ DRAG FROM PALETTE (desktop mouse) ============ */
+  document.querySelectorAll('.palette-item').forEach(item=>{
+    item.addEventListener('dragstart', e=>{
+      e.dataTransfer.setData('text/type', item.dataset.type);
+    });
+  });
+
+  const CANVAS_W = 960, CANVAS_H = 600;
+  function canvasScale(){
+    const rect = canvas.getBoundingClientRect();
+    return rect.width / CANVAS_W;
+  }
+  function clientToCanvas(clientX, clientY){
+    const rect = canvas.getBoundingClientRect();
+    const s = rect.width / CANVAS_W;
+    return { x:(clientX - rect.left)/s, y:(clientY - rect.top)/s };
+  }
+
+  canvas.addEventListener('dragover', e=>e.preventDefault());
+  canvas.addEventListener('drop', e=>{
+    e.preventDefault();
+    const type = e.dataTransfer.getData('text/type');
+    if(!type) return;
+    const pt = clientToCanvas(e.clientX, e.clientY);
+    const d = DEFAULTS[type];
+    let x = Math.max(0, Math.min(pt.x - d.w/2, CANVAS_W - d.w));
+    let y = Math.max(0, Math.min(pt.y - d.h/2, CANVAS_H - d.h));
+    createElement(type, x, y);
+  });
+
+  /* ============ TAP FROM PALETTE (mobile / touch: adds centered in canvas) ============ */
+  document.querySelectorAll('.palette-item').forEach(item=>{
+    item.addEventListener('click', e=>{
+      if(!isMobile()) return; // desktop uses native drag-and-drop
+      const type = item.dataset.type;
+      const d = DEFAULTS[type];
+      const x = Math.max(0, Math.round((CANVAS_W - d.w)/2));
+      const y = Math.max(0, Math.round((CANVAS_H - d.h)/2));
+      createElement(type, x, y);
+      showPanel('center');
+    });
+  });
+
+  /* ============ ELEMENT CREATION ============ */
+  function createElement(type, x, y){
+    const d = DEFAULTS[type];
+    const el = Object.assign({
+      id: 'el' + (idCounter++),
+      type: type,
+      x: Math.max(0,x), y: Math.max(0,y),
+      w: d.w, h: d.h,
+      text: d.text!==undefined ? d.text : '',
+      href: d.href || '',
+      src: d.src || '',
+      placeholder: d.placeholder || '',
+      color: d.color, bg: d.bg,
+      fontSize: d.fontSize, radius: d.radius,
+      domId: '', onclick: ''
+    });
+    elements.push(el);
+    renderAll();
+    selectElement(el.id);
+    return el;
+  }
+
+  /* ============ RENDER CANVAS ============ */
+  function renderAll(){
+    canvas.innerHTML = '';
+    canvasEmptyHint.classList.toggle('hidden', elements.length>0);
+    if(elements.length===0){ canvas.appendChild(canvasEmptyHint); }
+    elements.forEach(el=>{
+      const node = buildDomForElement(el);
+      canvas.appendChild(node);
+    });
+    renderExplorer();
+    document.getElementById('statElCount').textContent = elements.length;
+  }
+
+  function buildDomForElement(el){
+    let node;
+    switch(el.type){
+      case 'button':
+        node = document.createElement('button');
+        node.textContent = el.text;
+        break;
+      case 'text':
+        node = document.createElement('div');
+        node.textContent = el.text;
+        break;
+      case 'heading':
+        node = document.createElement('div');
+        node.textContent = el.text;
+        node.style.fontWeight = '800';
+        break;
+      case 'input':
+        node = document.createElement('input');
+        node.type = 'text';
+        node.placeholder = el.placeholder || '';
+        node.readOnly = true;
+        break;
+      case 'image':
+        node = document.createElement('img');
+        node.src = el.src;
+        node.style.objectFit = 'cover';
+        node.draggable = false;
+        break;
+      case 'box':
+        node = document.createElement('div');
+        node.textContent = el.text;
+        break;
+      case 'link':
+        node = document.createElement('div');
+        node.textContent = el.text;
+        node.style.textDecoration = 'underline';
+        break;
+      case 'checkbox':
+        node = document.createElement('div');
+        node.innerHTML = '☐ ' + escapeHtml(el.text);
+        break;
+      default:
+        node = document.createElement('div');
+    }
+    node.classList.add('gui-el');
+    node.dataset.id = el.id;
+    applyStyle(node, el);
+    node.addEventListener('mousedown', onElPointerDown);
+    node.addEventListener('touchstart', onElPointerDown, {passive:false});
+    node.addEventListener('click', e=>{ e.stopPropagation(); selectElement(el.id); });
+
+    if(el.id===selectedId){
+      node.classList.add('selected');
+      const handle = document.createElement('div');
+      handle.className = 'resize-handle';
+      handle.addEventListener('mousedown', onResizePointerDown);
+      handle.addEventListener('touchstart', onResizePointerDown, {passive:false});
+      node.appendChild(handle);
+    }
+    return node;
+  }
+
+  function applyStyle(node, el){
+    node.style.left = el.x+'px';
+    node.style.top = el.y+'px';
+    node.style.width = el.w+'px';
+    node.style.height = el.h+'px';
+    node.style.color = el.color;
+    node.style.background = el.bg;
+    node.style.fontSize = el.fontSize+'px';
+    node.style.borderRadius = el.radius+'px';
+    node.style.fontFamily = 'Inter, -apple-system, Segoe UI, sans-serif';
+    node.style.display = 'flex';
+    node.style.alignItems = 'center';
+    node.style.justifyContent = (el.type==='button') ? 'center' : 'flex-start';
+    node.style.padding = (el.type==='button' || el.type==='box') ? '0 10px' : (el.type==='text'||el.type==='heading'||el.type==='link'||el.type==='checkbox' ? '0' : '0 8px');
+    node.style.border = (el.type==='input') ? '1px solid #ccc' : (el.type==='box' ? '1px solid rgba(0,0,0,.08)' : 'none');
+    node.style.boxSizing = 'border-box';
+    node.style.overflow = 'hidden';
+    node.style.userSelect = 'none';
+    if(el.type==='button'){ node.style.border='none'; node.style.cursor='pointer'; node.style.fontWeight='600'; }
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /* ============ EXPLORER ============ */
+  function renderExplorer(){
+    explorer.innerHTML = '';
+    elements.forEach(el=>{
+      const li = document.createElement('li');
+      li.className = 'exp-item' + (el.id===selectedId ? ' selected' : '');
+      li.innerHTML = `<span class="exp-ico">${TYPE_ICON[el.type]}</span><span>${TYPE_LABEL[el.type]} — ${escapeHtml(el.text||el.id).slice(0,18)}</span>`;
+      li.addEventListener('click', ()=>selectElement(el.id));
+      explorer.appendChild(li);
+    });
+  }
+
+  /* ============ DRAG / MOVE ON CANVAS (mouse + touch) ============ */
+  let dragState = null;
+  let resizeState = null;
+
+  function pointFromEvent(e){
+    if(e.touches && e.touches.length) return {clientX:e.touches[0].clientX, clientY:e.touches[0].clientY};
+    if(e.changedTouches && e.changedTouches.length) return {clientX:e.changedTouches[0].clientX, clientY:e.changedTouches[0].clientY};
+    return {clientX:e.clientX, clientY:e.clientY};
+  }
+
+  function onElPointerDown(e){
+    if(e.target.classList.contains('resize-handle')) return;
+    const id = e.currentTarget.dataset.id;
+    selectElement(id);
+    const el = elements.find(x=>x.id===id);
+    const p = pointFromEvent(e);
+    const pt = clientToCanvas(p.clientX, p.clientY);
+    dragState = {id, offX: pt.x - el.x, offY: pt.y - el.y};
+    e.preventDefault();
+  }
+
+  function onPointerMove(e){
+    if(!dragState && !resizeState) return;
+    const p = pointFromEvent(e);
+    const pt = clientToCanvas(p.clientX, p.clientY);
+    if(dragState){
+      const el = elements.find(x=>x.id===dragState.id);
+      if(!el) return;
+      let nx = pt.x - dragState.offX;
+      let ny = pt.y - dragState.offY;
+      nx = Math.max(0, Math.min(nx, CANVAS_W - el.w));
+      ny = Math.max(0, Math.min(ny, CANVAS_H - el.h));
+      el.x = Math.round(nx); el.y = Math.round(ny);
+      const node = canvas.querySelector(`.gui-el[data-id="${el.id}"]`);
+      if(node){ node.style.left = el.x+'px'; node.style.top = el.y+'px'; }
+      e.preventDefault();
+    }
+    if(resizeState){
+      const el = elements.find(x=>x.id===resizeState.id);
+      if(!el) return;
+      let nw = pt.x - el.x;
+      let nh = pt.y - el.y;
+      el.w = Math.max(20, Math.min(nw, CANVAS_W - el.x));
+      el.h = Math.max(20, Math.min(nh, CANVAS_H - el.y));
+      const node = canvas.querySelector(`.gui-el[data-id="${el.id}"]`);
+      if(node){ node.style.width = el.w+'px'; node.style.height = el.h+'px'; }
+      e.preventDefault();
+    }
+  }
+
+  function onPointerUp(){
+    if(dragState || resizeState) syncInspectorFields();
+    dragState = null; resizeState = null;
+  }
+
+  document.addEventListener('mousemove', onPointerMove);
+  document.addEventListener('mouseup', onPointerUp);
+  document.addEventListener('touchmove', onPointerMove, {passive:false});
+  document.addEventListener('touchend', onPointerUp);
+  document.addEventListener('touchcancel', onPointerUp);
+
+  function onResizePointerDown(e){
+    e.stopPropagation(); e.preventDefault();
+    resizeState = {id: e.currentTarget.parentElement.dataset.id};
+  }
+
+  canvas.addEventListener('mousedown', e=>{
+    if(e.target === canvas){ selectElement(null); }
+  });
+  canvas.addEventListener('touchstart', e=>{
+    if(e.target === canvas){ selectElement(null); }
+  });
+
+  /* ============ SELECTION / INSPECTOR ============ */
+  function selectElement(id){
+    selectedId = id;
+    renderAll();
+    const insp = document.getElementById('inspector');
+    const none = document.getElementById('noSelection');
+    if(!id){ insp.classList.add('hidden'); none.classList.remove('hidden'); document.getElementById('statSelected').textContent='Nada seleccionado'; return; }
+    insp.classList.remove('hidden'); none.classList.add('hidden');
+    const el = elements.find(x=>x.id===id);
+    document.getElementById('inspTitle').textContent = TYPE_LABEL[el.type];
+    document.getElementById('statSelected').textContent = 'Seleccionado: ' + TYPE_LABEL[el.type] + ' (' + el.id + ')';
+    document.getElementById('linkUrlField').style.display = el.type==='link' ? '' : 'none';
+    document.getElementById('imgSrcField').style.display = el.type==='image' ? '' : 'none';
+    syncInspectorFields();
+  }
+
+  function syncInspectorFields(){
+    if(!selectedId) return;
+    const el = elements.find(x=>x.id===selectedId);
+    if(!el) return;
+    document.getElementById('propText').value = el.text || '';
+    document.getElementById('propHref').value = el.href || '';
+    document.getElementById('propSrc').value = el.src || '';
+    document.getElementById('propW').value = el.w;
+    document.getElementById('propH').value = el.h;
+    document.getElementById('propColor').value = toHex(el.color) || '#000000';
+    document.getElementById('propBg').value = toHex(el.bg) || '#ffffff';
+    document.getElementById('propFontSize').value = el.fontSize;
+    document.getElementById('propRadius').value = el.radius;
+    document.getElementById('propId').value = el.domId || '';
+    document.getElementById('propOnClick').value = el.onclick || '';
+  }
+  function toHex(c){
+    if(!c) return '#ffffff';
+    if(c.startsWith('#') && c.length===7) return c;
+    if(c==='#00000000' || c==='transparent') return '#ffffff';
+    return '#ffffff';
+  }
+
+  ['propText','propHref','propSrc','propW','propH','propColor','propBg','propFontSize','propRadius','propId','propOnClick']
+  .forEach(fid=>{
+    document.getElementById(fid).addEventListener('input', ()=>{
+      if(!selectedId) return;
+      const el = elements.find(x=>x.id===selectedId);
+      if(!el) return;
+      el.text = document.getElementById('propText').value;
+      el.href = document.getElementById('propHref').value;
+      el.src = document.getElementById('propSrc').value;
+      el.w = parseInt(document.getElementById('propW').value)||el.w;
+      el.h = parseInt(document.getElementById('propH').value)||el.h;
+      el.color = document.getElementById('propColor').value;
+      el.bg = document.getElementById('propBg').value;
+      el.fontSize = parseInt(document.getElementById('propFontSize').value)||el.fontSize;
+      el.radius = parseInt(document.getElementById('propRadius').value)||0;
+      el.domId = document.getElementById('propId').value.replace(/[^a-zA-Z0-9_\-]/g,'');
+      el.onclick = document.getElementById('propOnClick').value;
+      renderAll();
+    });
+  });
+
+  document.getElementById('deleteElBtn').addEventListener('click', ()=>{
+    if(!selectedId) return;
+    elements = elements.filter(x=>x.id!==selectedId);
+    selectedId = null;
+    renderAll();
+    selectElement(null);
+  });
+
+  document.addEventListener('keydown', e=>{
+    if((e.key==='Delete'||e.key==='Backspace') && selectedId && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){
+      elements = elements.filter(x=>x.id!==selectedId);
+      selectedId = null; renderAll(); selectElement(null);
+    }
+  });
+
+  /* ============ TODO ============ */
+  const todoInput = document.getElementById('todoInput');
+  const todoList = document.getElementById('todoList');
+
+  function addTodo(){
+    const val = todoInput.value.trim();
+    if(!val) return;
+    todos.push({id:'t'+(todoCounter++), text: val, done:false});
+    todoInput.value='';
+    renderTodos();
+  }
+  document.getElementById('todoAddBtn').addEventListener('click', addTodo);
+  todoInput.addEventListener('keydown', e=>{ if(e.key==='Enter') addTodo(); });
+
+  function renderTodos(){
+    todoList.innerHTML='';
+    todos.forEach(t=>{
+      const li = document.createElement('li');
+      li.className = 'todo-item' + (t.done?' done':'');
+      li.innerHTML = `<input type="checkbox" ${t.done?'checked':''}><span class="todo-text"></span><button class="todo-del">✕</button>`;
+      li.querySelector('.todo-text').textContent = t.text;
+      li.querySelector('input').addEventListener('change', ()=>{ t.done=!t.done; renderTodos(); });
+      li.querySelector('.todo-del').addEventListener('click', ()=>{ todos = todos.filter(x=>x.id!==t.id); renderTodos(); });
+      todoList.appendChild(li);
+    });
+    const done = todos.filter(t=>t.done).length;
+    document.getElementById('todoStats').textContent = `${done} de ${todos.length} completadas`;
+    document.getElementById('statTodoCount').textContent = todos.length;
+  }
+
+  /* ============ PREVIEW ============ */
+  document.getElementById('previewBtn').addEventListener('click', ()=>{
+    const html = generateHTML();
+    document.getElementById('previewFrame').srcdoc = html;
+    document.getElementById('previewOverlay').classList.add('show');
+  });
+  document.getElementById('previewClose').addEventListener('click', ()=>{
+    document.getElementById('previewOverlay').classList.remove('show');
+  });
+  document.getElementById('previewOverlay').addEventListener('click', e=>{
+    if(e.target.id==='previewOverlay') document.getElementById('previewOverlay').classList.remove('show');
+  });
+
+  /* ============ CODE GENERATION ============ */
+  function generateHTML(){
+    const css = generateCSS();
+    const js = generateJS();
+    const body = elements.map(el=>elToHtmlString(el)).join('\n    ');
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>${escapeHtml(document.getElementById('projectNameInput').value || 'MiProyecto')}</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-root">
+    ${body}
+  </div>
+  <script src="script.js"><\/script>
+</body>
+</html>`;
+  }
+
+  function elToHtmlString(el){
+    const idAttr = el.domId ? ` id="${el.domId}"` : ` id="${el.id}"`;
+    const clickAttr = el.onclick ? ` onclick="${escapeHtml(el.onclick)}"` : '';
+    const cls = ` class="sc-el sc-${el.type}"`;
+    switch(el.type){
+      case 'button':
+        return `<button${idAttr}${cls}${clickAttr}>${escapeHtml(el.text)}</button>`;
+      case 'text':
+        return `<div${idAttr}${cls}${clickAttr}>${escapeHtml(el.text)}</div>`;
+      case 'heading':
+        return `<div${idAttr}${cls}${clickAttr} style="font-weight:800;">${escapeHtml(el.text)}</div>`;
+      case 'input':
+        return `<input type="text" placeholder="${escapeHtml(el.placeholder||'')}"${idAttr}${cls}>`;
+      case 'image':
+        return `<img src="${escapeHtml(el.src)}"${idAttr}${cls} alt="">`;
+      case 'box':
+        return `<div${idAttr}${cls}${clickAttr}>${escapeHtml(el.text)}</div>`;
+      case 'link':
+        return `<a href="${escapeHtml(el.href||'#')}"${idAttr}${cls}${clickAttr}>${escapeHtml(el.text)}</a>`;
+      case 'checkbox':
+        return `<label${idAttr}${cls} style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox">${escapeHtml(el.text)}</label>`;
+      default:
+        return '';
+    }
+  }
+
+  function generateCSS(){
+    let out = `* { box-sizing: border-box; }
+body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; background:#ffffff; }
+#app-root { position: relative; width: 960px; height: 600px; margin: 0 auto; overflow:hidden; }
+.sc-el { position:absolute; overflow:hidden; }
+.sc-button { border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; justify-content:center; }
+.sc-input { border:1px solid #ccc; }
+.sc-box { border:1px solid rgba(0,0,0,.08); display:flex; align-items:center; padding:0 10px; }
+.sc-text, .sc-heading, .sc-link, .sc-checkbox { display:flex; align-items:center; }
+.sc-link { text-decoration:underline; cursor:pointer; }
+`;
+    elements.forEach(el=>{
+      const sel = '#' + (el.domId || el.id);
+      out += `${sel} {
+  left: ${el.x}px;
+  top: ${el.y}px;
+  width: ${el.w}px;
+  height: ${el.h}px;
+  color: ${el.color};
+  background: ${el.bg};
+  font-size: ${el.fontSize}px;
+  border-radius: ${el.radius}px;
+  padding: ${el.type==='button'?'0 10px':'0'};
+}
+`;
+    });
+    return out;
+  }
+
+  function generateJS(){
+    let out = `// Código generado por SimpleCode
+// Aquí puedes añadir tu propia lógica personalizada.
+document.addEventListener('DOMContentLoaded', function(){
+  console.log('Proyecto "${(document.getElementById('projectNameInput').value||'MiProyecto').replace(/"/g,'')}" cargado ✔');
+});
+`;
+    return out;
+  }
+
+  function generateTodoMd(){
+    let out = '# Lista de tareas — ' + (document.getElementById('projectNameInput').value||'MiProyecto') + '\n\n';
+    if(todos.length===0){ out += '_No hay tareas registradas._\n'; return out; }
+    todos.forEach(t=>{ out += `- [${t.done?'x':' '}] ${t.text}\n`; });
+    return out;
+  }
+
+  /* ============ EXPORT ZIP ============ */
+  document.getElementById('exportBtn').addEventListener('click', async ()=>{
+    const btn = document.getElementById('exportBtn');
+    const oldTxt = btn.textContent;
+    btn.textContent = '⏳ Generando...';
+    try{
+      const zip = new JSZip();
+      zip.file('index.html', generateHTML());
+      zip.file('style.css', generateCSS());
+      zip.file('script.js', generateJS());
+      zip.file('TODO.md', generateTodoMd());
+      const blob = await zip.generateAsync({type:'blob'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'SimpleCode.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    }catch(err){
+      alert('Error al generar el zip: ' + err.message);
+    }finally{
+      btn.textContent = oldTxt;
+    }
+  });
+
+  /* ============ INIT ============ */
+  renderAll();
+  renderTodos();
+  // seed with a couple of demo elements so the canvas isn't empty on first load
+  createElement('heading', 60, 40);
+  elements[elements.length-1].text = '¡Bienvenido a SimpleCode!';
+  createElement('text', 60, 100);
+  elements[elements.length-1].text = 'Arrastra componentes desde la izquierda para construir tu interfaz.';
+  createElement('button', 60, 150);
+  selectedId = null;
+  renderAll();
+  selectElement(null);
+
+})();
+</script>
+</body>
+</html>
