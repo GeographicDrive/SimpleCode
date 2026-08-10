@@ -112,6 +112,8 @@
   .gui-el{position:absolute;box-sizing:border-box;cursor:pointer;}
   .gui-el.selected{outline:2px solid var(--accent);outline-offset:2px;}
   .gui-el.editing{outline:2px dashed var(--accent-2);outline-offset:2px;cursor:text;}
+  .gui-el.move-armed{outline:2px dashed var(--accent-2);outline-offset:2px;cursor:grab;}
+  .gui-el.move-armed:active{cursor:grabbing;}
   .resize-handle{
     position:absolute;background:var(--accent);border:2px solid #0b1210;
     right:calc(-6px / var(--canvas-scale, 1));bottom:calc(-6px / var(--canvas-scale, 1));
@@ -174,6 +176,16 @@
   #inspectorHeader b{font-size:13px;}
   #deleteElBtn{background:none;border:1px solid var(--danger);color:var(--danger);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-weight:700;}
   #deleteElBtn:hover{background:var(--danger);color:#fff;}
+
+  /* CODE PANES (CSS / JS) */
+  .codePane{padding:14px;display:flex;flex-direction:column;gap:8px;height:100%;min-height:0;}
+  .codeView,.codeInput{
+    width:100%;background:var(--bg-0);border:1px solid var(--line);color:var(--text);
+    font-family:var(--mono);font-size:12px;line-height:1.5;border-radius:8px;padding:10px;resize:vertical;
+  }
+  .codeView{color:var(--text-dim);min-height:110px;max-height:180px;}
+  .codeInput{min-height:160px;flex:1;color:var(--text);}
+  .codeInput:focus{outline:none;border-color:var(--accent-dim);}
 
   /* TODO */
   #todoPane{padding:14px;display:flex;flex-direction:column;gap:10px;height:100%;}
@@ -293,7 +305,9 @@
     <div id="logo"><span class="dot"></span>SimpleCode</div>
     <input id="projectNameInput" value="MiProyecto" spellcheck="false">
     <div class="tabs">
-      <button class="tab-btn active" data-tab="build">🧩 Diseño</button>
+      <button class="tab-btn active" data-tab="build">🧩 HTML</button>
+      <button class="tab-btn" data-tab="css">🎨 CSS</button>
+      <button class="tab-btn" data-tab="js">🟨 JS</button>
       <button class="tab-btn" data-tab="todo">✅ TODO</button>
     </div>
     <div id="topbar-spacer"></div>
@@ -381,6 +395,18 @@
           </div>
         </div>
       </div>
+      <div id="cssPane" class="hidden codePane">
+        <div class="panel-title" style="padding:0;">CSS generado (por elementos)</div>
+        <textarea id="generatedCSSView" class="codeView" readonly spellcheck="false"></textarea>
+        <div class="panel-title" style="padding:0;">Tu CSS personalizado</div>
+        <textarea id="customCSSInput" class="codeInput" spellcheck="false" placeholder="/* Escribe aquí tu propio CSS. Se añadirá al final del style.css exportado. */"></textarea>
+      </div>
+      <div id="jsPane" class="hidden codePane">
+        <div class="panel-title" style="padding:0;">JS generado (base)</div>
+        <textarea id="generatedJSView" class="codeView" readonly spellcheck="false"></textarea>
+        <div class="panel-title" style="padding:0;">Tu JS personalizado</div>
+        <textarea id="customJSInput" class="codeInput" spellcheck="false" placeholder="// Escribe aquí tu propio JavaScript. Se añadirá al final del script.js exportado."></textarea>
+      </div>
       <div id="todoPane" class="hidden">
         <div class="panel-title" style="padding:0;">Lista de tareas del proyecto</div>
         <div id="todoInputRow">
@@ -406,6 +432,8 @@
     <button class="mnav-btn" data-panel="left"><span class="mnav-ico">🧩</span>Componentes</button>
     <button class="mnav-btn active" data-panel="center"><span class="mnav-ico">🖼️</span>Lienzo</button>
     <button class="mnav-btn" data-panel="right" data-tab="build"><span class="mnav-ico">⚙️</span>Propiedades</button>
+    <button class="mnav-btn" data-panel="right" data-tab="css"><span class="mnav-ico">🎨</span>CSS</button>
+    <button class="mnav-btn" data-panel="right" data-tab="js"><span class="mnav-ico">🟨</span>JS</button>
     <button class="mnav-btn" data-panel="right" data-tab="todo"><span class="mnav-ico">✅</span>Tareas</button>
   </div>
 
@@ -429,6 +457,8 @@
   let selectedId = null;
   let idCounter = 1;
   let todoCounter = 1;
+  let customCSS = '';     // user-written CSS, appended verbatim to style.css
+  let customJS = '';      // user-written JS, appended verbatim to script.js
 
   /* placement / move / resize / rotate modes (tap-based, no dragging of whole objects) */
   let placeType = null;      // component type armed from palette, waiting for a canvas tap
@@ -460,7 +490,10 @@
   function activateTab(tab){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
     document.getElementById('buildPane').classList.toggle('hidden', tab!=='build');
+    document.getElementById('cssPane').classList.toggle('hidden', tab!=='css');
+    document.getElementById('jsPane').classList.toggle('hidden', tab!=='js');
     document.getElementById('todoPane').classList.toggle('hidden', tab!=='todo');
+    if(tab==='css' || tab==='js') refreshCodePreviews();
   }
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click',()=> activateTab(btn.dataset.tab));
@@ -527,7 +560,7 @@
   function hideHint(){ actionHint.classList.add('hidden'); }
   function updateHintVisibility(){
     if(placeType) showHint('Toca el lienzo para colocar: ' + (TYPE_LABEL[placeType]||placeType));
-    else if(moveArmedId) showHint('Toca el lienzo donde quieras mover el elemento');
+    else if(moveArmedId) showHint('Arrastra el elemento para moverlo');
     else hideHint();
   }
 
@@ -566,16 +599,6 @@
       const type = placeType;
       disarmPlacement();
       createElement(type, x, y);
-    } else if(moveArmedId){
-      const el = elements.find(x=>x.id===moveArmedId);
-      const id = moveArmedId;
-      disarmMove();
-      if(el){
-        let x = Math.max(0, Math.min(pt.x - el.w/2, CANVAS_W - el.w));
-        let y = Math.max(0, Math.min(pt.y - el.h/2, CANVAS_H - el.h));
-        el.x = Math.round(x); el.y = Math.round(y);
-        selectElement(id);
-      }
     }
   }
 
@@ -667,7 +690,8 @@
     node.addEventListener('click', e=>{
       e.stopPropagation();
       if(node.isContentEditable) return; // currently editing text — let the caret click through
-      if(placeType || moveArmedId){ handleCanvasTap(e); return; }
+      if(moveArmedId===el.id) return; // this element is armed for drag — a plain click shouldn't do anything else
+      if(placeType){ handleCanvasTap(e); return; }
       selectElement(el.id);
     });
     node.addEventListener('dblclick', e=>{
@@ -678,15 +702,21 @@
     node.addEventListener('touchend', e=>{
       if(e.target.closest('.resize-handle') || e.target.closest('.rotate-handle')) return;
       if(node.isContentEditable) return;
+      if(moveArmedId===el.id && moveState){ e.stopPropagation(); e.preventDefault(); return; } // handled by move drag
       e.stopPropagation();
       e.preventDefault(); // stop the synthetic click from double-firing this
       const now = Date.now();
       const isDbl = (lastTapInfo.id===el.id) && (now-lastTapInfo.time < 350);
       lastTapInfo = isDbl ? {id:null, time:0} : {id:el.id, time:now};
       if(isDbl){ openElMenu(el.id); }
-      else if(placeType || moveArmedId){ handleCanvasTap(e); }
-      else { selectElement(el.id); }
+      else if(placeType){ handleCanvasTap(e); }
+      else if(moveArmedId!==el.id){ selectElement(el.id); }
     }, {passive:false});
+    if(el.id===moveArmedId){
+      node.classList.add('move-armed');
+      node.addEventListener('mousedown', onMovePointerDown);
+      node.addEventListener('touchstart', onMovePointerDown, {passive:false});
+    }
 
     if(el.id===selectedId){
       node.classList.add('selected');
@@ -749,6 +779,7 @@
   /* ============ RESIZE via handle drag (only the handle itself is draggable — not the object) ============ */
   let resizeState = null;
   let rotateState = null;
+  let moveState = null; // {id, offsetX, offsetY} — only active while dragging an element armed via the "Mover" menu action
 
   function onResizePointerDown(e){
     e.stopPropagation(); e.preventDefault();
@@ -764,8 +795,32 @@
     rotateState = {id, cx: rect.left+rect.width/2, cy: rect.top+rect.height/2, startRot: el.rotation||0};
   }
 
+  function onMovePointerDown(e){
+    const id = e.currentTarget.dataset.id;
+    if(id !== moveArmedId) return; // safety: only drag the element that's actually armed
+    e.stopPropagation(); e.preventDefault();
+    const el = elements.find(x=>x.id===id);
+    if(!el) return;
+    const p = pointFromEvent(e);
+    const pt = clientToCanvas(p.clientX, p.clientY);
+    moveState = {id, offsetX: pt.x - el.x, offsetY: pt.y - el.y};
+  }
+
   function onPointerMove(e){
-    if(!resizeState && !rotateState) return;
+    if(!resizeState && !rotateState && !moveState) return;
+    if(moveState){
+      const el = elements.find(x=>x.id===moveState.id);
+      if(el){
+        const p = pointFromEvent(e);
+        const pt = clientToCanvas(p.clientX, p.clientY);
+        let x = Math.max(0, Math.min(pt.x - moveState.offsetX, CANVAS_W - el.w));
+        let y = Math.max(0, Math.min(pt.y - moveState.offsetY, CANVAS_H - el.h));
+        el.x = Math.round(x); el.y = Math.round(y);
+        const node = canvas.querySelector(`.gui-el[data-id="${el.id}"]`);
+        if(node){ node.style.left = el.x+'px'; node.style.top = el.y+'px'; }
+        e.preventDefault();
+      }
+    }
     const p = pointFromEvent(e);
     if(resizeState){
       const el = elements.find(x=>x.id===resizeState.id);
@@ -793,12 +848,19 @@
   }
 
   function onPointerUp(){
-    const wasResizing = !!resizeState, wasRotating = !!rotateState;
-    if(wasResizing || wasRotating) syncInspectorFields();
+    const wasResizing = !!resizeState, wasRotating = !!rotateState, wasMoving = !!moveState;
+    if(wasResizing || wasRotating || wasMoving) syncInspectorFields();
     resizeState = null; rotateState = null;
+    const movedId = moveState ? moveState.id : null;
+    moveState = null;
     // action is a single gesture: hide the handle again once released
     if(wasResizing){ resizeEnabledId = null; if(selectedId) selectElement(selectedId); }
     if(wasRotating){ rotateEnabledId = null; if(selectedId) selectElement(selectedId); }
+    if(wasMoving){
+      moveArmedId = null; // disarm — one drag per "Mover" action
+      updateHintVisibility();
+      if(movedId) selectElement(movedId);
+    }
   }
 
   document.addEventListener('mousemove', onPointerMove);
@@ -810,14 +872,16 @@
   /* ============ TAP ON CANVAS BACKGROUND: place / move armed element, or deselect ============ */
   canvas.addEventListener('click', e=>{
     if(e.target !== canvas) return;
-    if(placeType || moveArmedId){ handleCanvasTap(e); return; }
+    if(placeType){ handleCanvasTap(e); return; }
+    if(moveArmedId) return; // waiting for a drag on the armed element, not a canvas tap
     selectElement(null);
     closeElMenu();
   });
   canvas.addEventListener('touchend', e=>{
     if(e.target !== canvas) return;
     e.preventDefault();
-    if(placeType || moveArmedId){ handleCanvasTap(e); return; }
+    if(placeType){ handleCanvasTap(e); return; }
+    if(moveArmedId) return;
     selectElement(null);
     closeElMenu();
   }, {passive:false});
@@ -1009,6 +1073,16 @@
     }
   });
 
+  /* ============ CUSTOM CSS / JS ============ */
+  const customCSSInput = document.getElementById('customCSSInput');
+  const customJSInput = document.getElementById('customJSInput');
+  customCSSInput.addEventListener('input', ()=>{ customCSS = customCSSInput.value; });
+  customJSInput.addEventListener('input', ()=>{ customJS = customJSInput.value; });
+  function refreshCodePreviews(){
+    document.getElementById('generatedCSSView').value = generateCSS(true);
+    document.getElementById('generatedJSView').value = generateJS(true);
+  }
+
   /* ============ TODO ============ */
   const todoInput = document.getElementById('todoInput');
   const todoList = document.getElementById('todoList');
@@ -1099,7 +1173,7 @@
     }
   }
 
-  function generateCSS(){
+  function generateCSS(generatedOnly){
     let out = `* { box-sizing: border-box; }
 body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; background:#ffffff; }
 #app-root { position: relative; width: 960px; height: 600px; margin: 0 auto; overflow:hidden; }
@@ -1125,16 +1199,28 @@ body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; back
 }
 `;
     });
+    if(!generatedOnly && customCSS.trim()){
+      out += `
+/* ===== Tu CSS personalizado ===== */
+` + customCSS + `
+`;
+    }
     return out;
   }
 
-  function generateJS(){
+  function generateJS(generatedOnly){
     let out = `// Código generado por SimpleCode
 // Aquí puedes añadir tu propia lógica personalizada.
 document.addEventListener('DOMContentLoaded', function(){
   console.log('Proyecto "${(document.getElementById('projectNameInput').value||'MiProyecto').replace(/"/g,'')}" cargado ✔');
 });
 `;
+    if(!generatedOnly && customJS.trim()){
+      out += `
+// ===== Tu JS personalizado =====
+` + customJS + `
+`;
+    }
     return out;
   }
 
@@ -1175,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', function(){
   /* ============ INIT ============ */
   renderAll();
   renderTodos();
+  refreshCodePreviews();
   // seed with a couple of demo elements so the canvas isn't empty on first load
   createElement('heading', 60, 40);
   elements[elements.length-1].text = '¡Bienvenido a SimpleCode!';
