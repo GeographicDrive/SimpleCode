@@ -1,3 +1,9 @@
+<!--
+  MAINTENANCE NOTICE — DO NOT CHANGE:
+  1) Keep this project's zip file named exactly "SimpleCode.zip". Do not rename it.
+  2) Keep this HTML file named exactly "index.html" at all times.
+  Both names are relied on by the export/build flow; renaming either will break it.
+-->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -71,6 +77,7 @@
     border-radius:8px;padding:9px 10px;cursor:grab;font-size:12.5px;font-weight:600;user-select:none;
   }
   .palette-item:hover{border-color:var(--accent-dim);background:var(--bg-3);}
+  .palette-item.armed{border-color:var(--accent);background:var(--bg-3);box-shadow:0 0 0 2px var(--accent-dim) inset;}
   .palette-item .ico{width:18px;text-align:center;color:var(--accent);font-family:var(--mono);}
   #explorerWrap{flex:1;overflow-y:auto;border-top:1px solid var(--line);margin-top:10px;}
   #explorer{list-style:none;margin:0;padding:6px;}
@@ -94,16 +101,46 @@
     box-shadow:0 0 0 1px var(--line),0 20px 60px rgba(0,0,0,.5);overflow:hidden;flex-shrink:0;
   }
   #canvas{position:absolute;inset:0;overflow:hidden;}
-  .gui-el{position:absolute;box-sizing:border-box;cursor:move;}
+  .gui-el{position:absolute;box-sizing:border-box;cursor:pointer;}
   .gui-el.selected{outline:2px solid var(--accent);outline-offset:2px;}
+  .gui-el.editing{outline:2px dashed var(--accent-2);outline-offset:2px;cursor:text;}
   .resize-handle{
     position:absolute;width:10px;height:10px;background:var(--accent);border:2px solid #0b1210;
     right:-6px;bottom:-6px;cursor:nwse-resize;border-radius:2px;z-index:5;
+  }
+  .rotate-handle{
+    position:absolute;width:12px;height:12px;background:var(--accent-2);border:2px solid #0b1210;
+    left:50%;top:-26px;margin-left:-6px;cursor:grab;border-radius:50%;z-index:5;
+  }
+  .rotate-handle::before{
+    content:'';position:absolute;left:50%;top:100%;width:1px;height:16px;background:var(--accent-2);
+    transform:translateX(-50%);
   }
   #canvasEmptyHint{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:#c8cbd4;font-family:var(--mono);font-size:13px;text-align:center;pointer-events:none;
   }
+  #actionHint{
+    position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:60;
+    background:var(--bg-2);border:1px solid var(--accent);color:var(--text);
+    padding:8px 10px 8px 16px;border-radius:20px;font-size:12.5px;font-weight:600;
+    display:flex;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);
+  }
+  #actionHint.hidden{display:none;}
+  #actionHintCancel{
+    background:var(--bg-3);border:1px solid var(--line);color:var(--text);border-radius:14px;
+    padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;
+  }
+  #actionHintCancel:hover{border-color:var(--danger);color:var(--danger);}
+  #elMenu{
+    position:fixed;z-index:70;display:flex;gap:4px;background:var(--bg-2);border:1px solid var(--line);
+    border-radius:10px;padding:5px;box-shadow:0 10px 30px rgba(0,0,0,.55);
+  }
+  #elMenu button{
+    background:var(--bg-3);border:1px solid transparent;color:var(--text);border-radius:7px;
+    padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+  }
+  #elMenu button:hover{border-color:var(--accent);color:var(--accent);}
 
   /* ---- Right: inspector / todo ---- */
   #right{background:var(--bg-1);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow-y:auto;}
@@ -258,16 +295,16 @@
 
     <!-- LEFT: palette + explorer -->
     <div id="left">
-      <div class="panel-title">Componentes (arrastra)</div>
+      <div class="panel-title">Componentes (toca para colocar)</div>
       <div id="palette">
-        <div class="palette-item" draggable="true" data-type="button"><span class="ico">▭</span>Botón</div>
-        <div class="palette-item" draggable="true" data-type="text"><span class="ico">T</span>Texto</div>
-        <div class="palette-item" draggable="true" data-type="heading"><span class="ico">H</span>Título</div>
-        <div class="palette-item" draggable="true" data-type="input"><span class="ico">▯</span>Campo de texto</div>
-        <div class="palette-item" draggable="true" data-type="image"><span class="ico">▧</span>Imagen</div>
-        <div class="palette-item" draggable="true" data-type="box"><span class="ico">▢</span>Panel / Div</div>
-        <div class="palette-item" draggable="true" data-type="link"><span class="ico">⇢</span>Enlace</div>
-        <div class="palette-item" draggable="true" data-type="checkbox"><span class="ico">☑</span>Casilla</div>
+        <div class="palette-item" data-type="button"><span class="ico">▭</span>Botón</div>
+        <div class="palette-item" data-type="text"><span class="ico">T</span>Texto</div>
+        <div class="palette-item" data-type="heading"><span class="ico">H</span>Título</div>
+        <div class="palette-item" data-type="input"><span class="ico">▯</span>Campo de texto</div>
+        <div class="palette-item" data-type="image"><span class="ico">▧</span>Imagen</div>
+        <div class="palette-item" data-type="box"><span class="ico">▢</span>Panel / Div</div>
+        <div class="palette-item" data-type="link"><span class="ico">⇢</span>Enlace</div>
+        <div class="palette-item" data-type="checkbox"><span class="ico">☑</span>Casilla</div>
       </div>
       <div id="explorerWrap">
         <div class="panel-title">Jerarquía</div>
@@ -280,8 +317,12 @@
       <div id="canvasWrap">
         <div id="canvasFrame">
           <div id="canvas">
-            <div id="canvasEmptyHint">Arrastra un componente aquí desde la izquierda<br>para empezar a construir tu interfaz</div>
+            <div id="canvasEmptyHint">Toca un componente a la izquierda y luego toca el lienzo<br>para empezar a construir tu interfaz</div>
           </div>
+        </div>
+        <div id="actionHint" class="hidden">
+          <span id="actionHintText"></span>
+          <button id="actionHintCancel">Cancelar</button>
         </div>
       </div>
     </div>
@@ -372,11 +413,18 @@
   "use strict";
 
   /* ============ STATE ============ */
-  let elements = [];      // {id, type, x,y,w,h, text, href, src, color, bg, fontSize, radius, onclick, domId}
+  let elements = [];      // {id, type, x,y,w,h,rotation, text, href, src, color, bg, fontSize, radius, onclick, domId}
   let todos = [];          // {id, text, done}
   let selectedId = null;
   let idCounter = 1;
   let todoCounter = 1;
+
+  /* placement / move / resize / rotate modes (tap-based, no dragging of whole objects) */
+  let placeType = null;      // component type armed from palette, waiting for a canvas tap
+  let moveArmedId = null;    // element id armed to move, waiting for a canvas tap
+  let resizeEnabledId = null;// element id currently showing its resize handle
+  let rotateEnabledId = null;// element id currently showing its rotate handle
+  let lastTapInfo = {id:null, time:0};
 
   const canvas = document.getElementById('canvas');
   const canvasEmptyHint = document.getElementById('canvasEmptyHint');
@@ -439,48 +487,77 @@
   window.addEventListener('resize', updateCanvasScale);
   updateCanvasScale();
 
-  /* ============ DRAG FROM PALETTE (desktop mouse) ============ */
-  document.querySelectorAll('.palette-item').forEach(item=>{
-    item.addEventListener('dragstart', e=>{
-      e.dataTransfer.setData('text/type', item.dataset.type);
-    });
-  });
-
   const CANVAS_W = 960, CANVAS_H = 600;
-  function canvasScale(){
-    const rect = canvas.getBoundingClientRect();
-    return rect.width / CANVAS_W;
-  }
   function clientToCanvas(clientX, clientY){
     const rect = canvas.getBoundingClientRect();
     const s = rect.width / CANVAS_W;
     return { x:(clientX - rect.left)/s, y:(clientY - rect.top)/s };
   }
+  function pointFromEvent(e){
+    if(e.touches && e.touches.length) return {clientX:e.touches[0].clientX, clientY:e.touches[0].clientY};
+    if(e.changedTouches && e.changedTouches.length) return {clientX:e.changedTouches[0].clientX, clientY:e.changedTouches[0].clientY};
+    return {clientX:e.clientX, clientY:e.clientY};
+  }
 
-  canvas.addEventListener('dragover', e=>e.preventDefault());
-  canvas.addEventListener('drop', e=>{
-    e.preventDefault();
-    const type = e.dataTransfer.getData('text/type');
-    if(!type) return;
-    const pt = clientToCanvas(e.clientX, e.clientY);
-    const d = DEFAULTS[type];
-    let x = Math.max(0, Math.min(pt.x - d.w/2, CANVAS_W - d.w));
-    let y = Math.max(0, Math.min(pt.y - d.h/2, CANVAS_H - d.h));
-    createElement(type, x, y);
-  });
+  /* ============ ACTION HINT BAR ============ */
+  const actionHint = document.getElementById('actionHint');
+  const actionHintText = document.getElementById('actionHintText');
+  document.getElementById('actionHintCancel').addEventListener('click', ()=>{ disarmPlacement(); disarmMove(); });
+  function showHint(text){ actionHintText.textContent = text; actionHint.classList.remove('hidden'); }
+  function hideHint(){ actionHint.classList.add('hidden'); }
+  function updateHintVisibility(){
+    if(placeType) showHint('Toca el lienzo para colocar: ' + (TYPE_LABEL[placeType]||placeType));
+    else if(moveArmedId) showHint('Toca el lienzo donde quieras mover el elemento');
+    else hideHint();
+  }
 
-  /* ============ TAP FROM PALETTE (mobile / touch: adds centered in canvas) ============ */
+  /* ============ SELECT FROM PALETTE (tap to arm, then tap canvas to place) ============ */
   document.querySelectorAll('.palette-item').forEach(item=>{
-    item.addEventListener('click', e=>{
-      if(!isMobile()) return; // desktop uses native drag-and-drop
+    item.addEventListener('click', ()=>{
       const type = item.dataset.type;
-      const d = DEFAULTS[type];
-      const x = Math.max(0, Math.round((CANVAS_W - d.w)/2));
-      const y = Math.max(0, Math.round((CANVAS_H - d.h)/2));
-      createElement(type, x, y);
+      if(placeType === type){ disarmPlacement(); return; }
+      disarmMove();
+      placeType = type;
+      document.querySelectorAll('.palette-item.armed').forEach(n=>n.classList.remove('armed'));
+      item.classList.add('armed');
+      updateHintVisibility();
       showPanel('center');
     });
   });
+
+  function disarmPlacement(){
+    placeType = null;
+    document.querySelectorAll('.palette-item.armed').forEach(n=>n.classList.remove('armed'));
+    updateHintVisibility();
+  }
+  function disarmMove(){
+    moveArmedId = null;
+    updateHintVisibility();
+  }
+
+  /* ============ HANDLE A CANVAS TAP: places a new element OR relocates an armed one ============ */
+  function handleCanvasTap(e){
+    const p = pointFromEvent(e);
+    const pt = clientToCanvas(p.clientX, p.clientY);
+    if(placeType){
+      const d = DEFAULTS[placeType];
+      let x = Math.max(0, Math.min(pt.x - d.w/2, CANVAS_W - d.w));
+      let y = Math.max(0, Math.min(pt.y - d.h/2, CANVAS_H - d.h));
+      const type = placeType;
+      disarmPlacement();
+      createElement(type, x, y);
+    } else if(moveArmedId){
+      const el = elements.find(x=>x.id===moveArmedId);
+      const id = moveArmedId;
+      disarmMove();
+      if(el){
+        let x = Math.max(0, Math.min(pt.x - el.w/2, CANVAS_W - el.w));
+        let y = Math.max(0, Math.min(pt.y - el.h/2, CANVAS_H - el.h));
+        el.x = Math.round(x); el.y = Math.round(y);
+        selectElement(id);
+      }
+    }
+  }
 
   /* ============ ELEMENT CREATION ============ */
   function createElement(type, x, y){
@@ -489,7 +566,7 @@
       id: 'el' + (idCounter++),
       type: type,
       x: Math.max(0,x), y: Math.max(0,y),
-      w: d.w, h: d.h,
+      w: d.w, h: d.h, rotation: 0,
       text: d.text!==undefined ? d.text : '',
       href: d.href || '',
       src: d.src || '',
@@ -564,17 +641,49 @@
     node.classList.add('gui-el');
     node.dataset.id = el.id;
     applyStyle(node, el);
-    node.addEventListener('mousedown', onElPointerDown);
-    node.addEventListener('touchstart', onElPointerDown, {passive:false});
-    node.addEventListener('click', e=>{ e.stopPropagation(); selectElement(el.id); });
+
+    /* Tap to select / tap-through for place-or-move modes. Double-tap / double-click
+       opens the PowerPoint-style action menu (mover, redimensionar, rotar, editar texto). */
+    node.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(node.isContentEditable) return; // currently editing text — let the caret click through
+      if(placeType || moveArmedId){ handleCanvasTap(e); return; }
+      selectElement(el.id);
+    });
+    node.addEventListener('dblclick', e=>{
+      e.stopPropagation(); e.preventDefault();
+      if(node.isContentEditable) return;
+      openElMenu(el.id);
+    });
+    node.addEventListener('touchend', e=>{
+      if(e.target.closest('.resize-handle') || e.target.closest('.rotate-handle')) return;
+      if(node.isContentEditable) return;
+      e.stopPropagation();
+      e.preventDefault(); // stop the synthetic click from double-firing this
+      const now = Date.now();
+      const isDbl = (lastTapInfo.id===el.id) && (now-lastTapInfo.time < 350);
+      lastTapInfo = isDbl ? {id:null, time:0} : {id:el.id, time:now};
+      if(isDbl){ openElMenu(el.id); }
+      else if(placeType || moveArmedId){ handleCanvasTap(e); }
+      else { selectElement(el.id); }
+    }, {passive:false});
 
     if(el.id===selectedId){
       node.classList.add('selected');
+    }
+    if(el.id===resizeEnabledId){
       const handle = document.createElement('div');
       handle.className = 'resize-handle';
       handle.addEventListener('mousedown', onResizePointerDown);
       handle.addEventListener('touchstart', onResizePointerDown, {passive:false});
       node.appendChild(handle);
+    }
+    if(el.id===rotateEnabledId){
+      const rHandle = document.createElement('div');
+      rHandle.className = 'rotate-handle';
+      rHandle.addEventListener('mousedown', onRotatePointerDown);
+      rHandle.addEventListener('touchstart', onRotatePointerDown, {passive:false});
+      node.appendChild(rHandle);
     }
     return node;
   }
@@ -597,6 +706,7 @@
     node.style.boxSizing = 'border-box';
     node.style.overflow = 'hidden';
     node.style.userSelect = 'none';
+    node.style.transform = 'rotate(' + (el.rotation||0) + 'deg)';
     if(el.type==='button'){ node.style.border='none'; node.style.cursor='pointer'; node.style.fontWeight='600'; }
   }
 
@@ -616,46 +726,31 @@
     });
   }
 
-  /* ============ DRAG / MOVE ON CANVAS (mouse + touch) ============ */
-  let dragState = null;
+  /* ============ RESIZE via handle drag (only the handle itself is draggable — not the object) ============ */
   let resizeState = null;
+  let rotateState = null;
 
-  function pointFromEvent(e){
-    if(e.touches && e.touches.length) return {clientX:e.touches[0].clientX, clientY:e.touches[0].clientY};
-    if(e.changedTouches && e.changedTouches.length) return {clientX:e.changedTouches[0].clientX, clientY:e.changedTouches[0].clientY};
-    return {clientX:e.clientX, clientY:e.clientY};
+  function onResizePointerDown(e){
+    e.stopPropagation(); e.preventDefault();
+    resizeState = {id: e.currentTarget.parentElement.dataset.id};
   }
-
-  function onElPointerDown(e){
-    if(e.target.classList.contains('resize-handle')) return;
-    const id = e.currentTarget.dataset.id;
-    selectElement(id);
+  function onRotatePointerDown(e){
+    e.stopPropagation(); e.preventDefault();
+    const id = e.currentTarget.parentElement.dataset.id;
     const el = elements.find(x=>x.id===id);
-    const p = pointFromEvent(e);
-    const pt = clientToCanvas(p.clientX, p.clientY);
-    dragState = {id, offX: pt.x - el.x, offY: pt.y - el.y};
-    e.preventDefault();
+    if(!el) return;
+    const node = canvas.querySelector(`.gui-el[data-id="${id}"]`);
+    const rect = node.getBoundingClientRect();
+    rotateState = {id, cx: rect.left+rect.width/2, cy: rect.top+rect.height/2, startRot: el.rotation||0};
   }
 
   function onPointerMove(e){
-    if(!dragState && !resizeState) return;
+    if(!resizeState && !rotateState) return;
     const p = pointFromEvent(e);
-    const pt = clientToCanvas(p.clientX, p.clientY);
-    if(dragState){
-      const el = elements.find(x=>x.id===dragState.id);
-      if(!el) return;
-      let nx = pt.x - dragState.offX;
-      let ny = pt.y - dragState.offY;
-      nx = Math.max(0, Math.min(nx, CANVAS_W - el.w));
-      ny = Math.max(0, Math.min(ny, CANVAS_H - el.h));
-      el.x = Math.round(nx); el.y = Math.round(ny);
-      const node = canvas.querySelector(`.gui-el[data-id="${el.id}"]`);
-      if(node){ node.style.left = el.x+'px'; node.style.top = el.y+'px'; }
-      e.preventDefault();
-    }
     if(resizeState){
       const el = elements.find(x=>x.id===resizeState.id);
       if(!el) return;
+      const pt = clientToCanvas(p.clientX, p.clientY);
       let nw = pt.x - el.x;
       let nh = pt.y - el.y;
       el.w = Math.max(20, Math.min(nw, CANVAS_W - el.x));
@@ -664,11 +759,26 @@
       if(node){ node.style.width = el.w+'px'; node.style.height = el.h+'px'; }
       e.preventDefault();
     }
+    if(rotateState){
+      const el = elements.find(x=>x.id===rotateState.id);
+      if(!el) return;
+      const angle = Math.atan2(p.clientY - rotateState.cy, p.clientX - rotateState.cx);
+      let deg = Math.round(angle*180/Math.PI + 90);
+      deg = ((deg % 360) + 360) % 360;
+      el.rotation = deg;
+      const node = canvas.querySelector(`.gui-el[data-id="${el.id}"]`);
+      if(node){ node.style.transform = 'rotate(' + deg + 'deg)'; }
+      e.preventDefault();
+    }
   }
 
   function onPointerUp(){
-    if(dragState || resizeState) syncInspectorFields();
-    dragState = null; resizeState = null;
+    const wasResizing = !!resizeState, wasRotating = !!rotateState;
+    if(wasResizing || wasRotating) syncInspectorFields();
+    resizeState = null; rotateState = null;
+    // action is a single gesture: hide the handle again once released
+    if(wasResizing){ resizeEnabledId = null; if(selectedId) selectElement(selectedId); }
+    if(wasRotating){ rotateEnabledId = null; if(selectedId) selectElement(selectedId); }
   }
 
   document.addEventListener('mousemove', onPointerMove);
@@ -677,17 +787,119 @@
   document.addEventListener('touchend', onPointerUp);
   document.addEventListener('touchcancel', onPointerUp);
 
-  function onResizePointerDown(e){
-    e.stopPropagation(); e.preventDefault();
-    resizeState = {id: e.currentTarget.parentElement.dataset.id};
+  /* ============ TAP ON CANVAS BACKGROUND: place / move armed element, or deselect ============ */
+  canvas.addEventListener('click', e=>{
+    if(e.target !== canvas) return;
+    if(placeType || moveArmedId){ handleCanvasTap(e); return; }
+    selectElement(null);
+    closeElMenu();
+  });
+  canvas.addEventListener('touchend', e=>{
+    if(e.target !== canvas) return;
+    e.preventDefault();
+    if(placeType || moveArmedId){ handleCanvasTap(e); return; }
+    selectElement(null);
+    closeElMenu();
+  }, {passive:false});
+
+  /* ============ ELEMENT ACTION MENU (PowerPoint-style, opens on double-tap/double-click) ============ */
+  function closeElMenu(){
+    const m = document.getElementById('elMenu');
+    if(m) m.remove();
+  }
+  function openElMenu(id){
+    closeElMenu();
+    const el = elements.find(x=>x.id===id);
+    if(!el) return;
+    selectElement(id); // re-renders the canvas, so re-query the node below
+    const node = canvas.querySelector(`.gui-el[data-id="${id}"]`);
+    if(!node) return;
+    const rect = node.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'elMenu';
+    const canEditText = (el.type!=='image' && el.type!=='input');
+    menu.innerHTML =
+      '<button data-act="move">⇕ Mover</button>' +
+      '<button data-act="resize">⤡ Redimensionar</button>' +
+      '<button data-act="rotate">⟳ Rotar</button>' +
+      (canEditText ? '<button data-act="edit">✎ Editar texto</button>' : '');
+    document.body.appendChild(menu);
+    const mRect = menu.getBoundingClientRect();
+    let left = rect.left + rect.width/2 - mRect.width/2;
+    left = Math.max(6, Math.min(left, window.innerWidth - mRect.width - 6));
+    let top = rect.top - mRect.height - 10;
+    if(top < 6) top = Math.min(rect.bottom + 10, window.innerHeight - mRect.height - 6);
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+    menu.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click', ev=>{
+        ev.stopPropagation();
+        const act = b.dataset.act;
+        closeElMenu();
+        if(act==='move') armMove(id);
+        else if(act==='resize') armResize(id);
+        else if(act==='rotate') armRotate(id);
+        else if(act==='edit') editTextInline(id);
+      });
+      b.addEventListener('touchend', ev=>{ ev.stopPropagation(); }, {passive:true});
+    });
+  }
+  document.addEventListener('click', e=>{
+    const menu = document.getElementById('elMenu');
+    if(menu && !menu.contains(e.target) && !e.target.closest('.gui-el')){ closeElMenu(); }
+  });
+
+  function armMove(id){
+    disarmPlacement();
+    resizeEnabledId = null; rotateEnabledId = null;
+    moveArmedId = id;
+    updateHintVisibility();
+    selectElement(id);
+  }
+  function armResize(id){
+    disarmPlacement(); disarmMove();
+    rotateEnabledId = null;
+    resizeEnabledId = id;
+    selectElement(id);
+  }
+  function armRotate(id){
+    disarmPlacement(); disarmMove();
+    resizeEnabledId = null;
+    rotateEnabledId = id;
+    selectElement(id);
   }
 
-  canvas.addEventListener('mousedown', e=>{
-    if(e.target === canvas){ selectElement(null); }
-  });
-  canvas.addEventListener('touchstart', e=>{
-    if(e.target === canvas){ selectElement(null); }
-  });
+  /* ============ EDIT TEXT INLINE (double-tap → menu → "Editar texto") ============ */
+  function placeCaretAtEnd(node){
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  function editTextInline(id){
+    const el = elements.find(x=>x.id===id);
+    const node = canvas.querySelector(`.gui-el[data-id="${id}"]`);
+    if(!el || !node || el.type==='image' || el.type==='input') return;
+    node.textContent = el.text || '';
+    node.contentEditable = 'true';
+    node.classList.add('editing');
+    node.focus();
+    placeCaretAtEnd(node);
+    function finish(){
+      el.text = node.textContent;
+      node.removeEventListener('blur', finish);
+      node.removeEventListener('keydown', keyHandler);
+      selectElement(id);
+    }
+    function keyHandler(ev){
+      if(ev.key==='Enter'){ ev.preventDefault(); node.blur(); }
+      else if(ev.key==='Escape'){ ev.preventDefault(); node.blur(); }
+    }
+    node.addEventListener('blur', finish);
+    node.addEventListener('keydown', keyHandler);
+  }
 
   /* ============ SELECTION / INSPECTOR ============ */
   function selectElement(id){
@@ -752,15 +964,28 @@
   document.getElementById('deleteElBtn').addEventListener('click', ()=>{
     if(!selectedId) return;
     elements = elements.filter(x=>x.id!==selectedId);
+    if(moveArmedId===selectedId) disarmMove();
+    if(resizeEnabledId===selectedId) resizeEnabledId=null;
+    if(rotateEnabledId===selectedId) rotateEnabledId=null;
     selectedId = null;
+    closeElMenu();
     renderAll();
     selectElement(null);
   });
 
   document.addEventListener('keydown', e=>{
-    if((e.key==='Delete'||e.key==='Backspace') && selectedId && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){
+    if((e.key==='Delete'||e.key==='Backspace') && selectedId && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && !document.activeElement.isContentEditable){
       elements = elements.filter(x=>x.id!==selectedId);
-      selectedId = null; renderAll(); selectElement(null);
+      if(moveArmedId===selectedId) disarmMove();
+      if(resizeEnabledId===selectedId) resizeEnabledId=null;
+      if(rotateEnabledId===selectedId) rotateEnabledId=null;
+      selectedId = null; closeElMenu(); renderAll(); selectElement(null);
+    }
+    if(e.key==='Escape'){
+      disarmPlacement(); disarmMove();
+      resizeEnabledId = null; rotateEnabledId = null;
+      closeElMenu();
+      renderAll();
     }
   });
 
@@ -934,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', function(){
   createElement('heading', 60, 40);
   elements[elements.length-1].text = '¡Bienvenido a SimpleCode!';
   createElement('text', 60, 100);
-  elements[elements.length-1].text = 'Arrastra componentes desde la izquierda para construir tu interfaz.';
+  elements[elements.length-1].text = 'Toca un componente a la izquierda y luego toca el lienzo para construir tu interfaz.';
   createElement('button', 60, 150);
   selectedId = null;
   renderAll();
