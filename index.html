@@ -99,21 +99,36 @@
   #canvasFrame{
     position:relative;width:960px;height:600px;background:#ffffff;border-radius:10px;
     box-shadow:0 0 0 1px var(--line),0 20px 60px rgba(0,0,0,.5);overflow:hidden;flex-shrink:0;
+    transform:scale(var(--canvas-scale, 1));
+    transform-origin:top left;
+    margin-bottom:calc(-600px * (1 - var(--canvas-scale, 1)));
+    margin-right:calc(-960px * (1 - var(--canvas-scale, 1)));
+  }
+  #canvasWrap{
+    width:calc(960px * var(--canvas-scale, 1));height:calc(600px * var(--canvas-scale, 1));
+    position:relative;flex-shrink:0;
   }
   #canvas{position:absolute;inset:0;overflow:hidden;}
   .gui-el{position:absolute;box-sizing:border-box;cursor:pointer;}
   .gui-el.selected{outline:2px solid var(--accent);outline-offset:2px;}
   .gui-el.editing{outline:2px dashed var(--accent-2);outline-offset:2px;cursor:text;}
   .resize-handle{
-    position:absolute;width:10px;height:10px;background:var(--accent);border:2px solid #0b1210;
-    right:-6px;bottom:-6px;cursor:nwse-resize;border-radius:2px;z-index:5;
+    position:absolute;background:var(--accent);border:2px solid #0b1210;
+    right:calc(-6px / var(--canvas-scale, 1));bottom:calc(-6px / var(--canvas-scale, 1));
+    width:calc(18px / var(--canvas-scale, 1));height:calc(18px / var(--canvas-scale, 1));
+    cursor:nwse-resize;border-radius:2px;z-index:5;
   }
   .rotate-handle{
-    position:absolute;width:12px;height:12px;background:var(--accent-2);border:2px solid #0b1210;
-    left:50%;top:-26px;margin-left:-6px;cursor:grab;border-radius:50%;z-index:5;
+    position:absolute;background:var(--accent-2);border:2px solid #0b1210;
+    left:50%;top:calc(-30px / var(--canvas-scale, 1));
+    width:calc(18px / var(--canvas-scale, 1));height:calc(18px / var(--canvas-scale, 1));
+    margin-left:calc(-9px / var(--canvas-scale, 1));
+    cursor:grab;border-radius:50%;z-index:5;
   }
   .rotate-handle::before{
-    content:'';position:absolute;left:50%;top:100%;width:1px;height:16px;background:var(--accent-2);
+    content:'';position:absolute;left:50%;top:100%;
+    width:calc(1px / var(--canvas-scale, 1));height:calc(16px / var(--canvas-scale, 1));
+    background:var(--accent-2);
     transform:translateX(-50%);
   }
   #canvasEmptyHint{
@@ -219,15 +234,9 @@
     #left{flex-direction:column;}
     #right{flex-direction:column;}
 
-    /* Canvas: scale the fixed 960x600 design surface to fit the phone width */
+    /* Canvas already scales itself to fit its container at any width (see base rules
+       and the JS updateCanvasScale() function) — no extra rules needed here. */
     #center{padding:14px;align-items:flex-start;justify-content:center;overflow:auto;}
-    #canvasFrame{
-      width:960px;height:600px;
-      transform:scale(var(--canvas-scale, 0.34));
-      transform-origin:top left;
-      margin-bottom:calc(-600px * (1 - var(--canvas-scale, 0.34)));
-    }
-    #canvasWrap{width:calc(960px * var(--canvas-scale, 0.34));height:calc(600px * var(--canvas-scale, 0.34));position:relative;}
 
     /* Palette items bigger for touch, tap to add */
     .palette-item{padding:12px 12px;font-size:13.5px;cursor:pointer;}
@@ -257,20 +266,22 @@
     /* Preview modal fits screen */
     #previewBox{width:94vw;height:70vh;max-width:960px;}
     #previewClose{top:-38px;}
-
-    /* Bigger resize handle for touch, scaled up so it stays a real fingertip size
-       despite the canvas being visually scaled down via transform */
-    .resize-handle{
-      width:calc(22px / var(--canvas-scale, 0.34));
-      height:calc(22px / var(--canvas-scale, 0.34));
-      right:calc(-12px / var(--canvas-scale, 0.34));
-      bottom:calc(-12px / var(--canvas-scale, 0.34));
-    }
   }
 
   @media (max-width:420px){
     #projectNameInput{width:80px;}
     .topbtn span.txt{display:none;}
+  }
+
+  /* ===== Landscape phones (wide but short): keep the 3-column desktop layout,
+     but slim the side panels so the canvas gets real room to scale into ===== */
+  @media (max-height:520px) and (min-width:600px){
+    #main{grid-template-columns:168px 1fr 230px;}
+    #topbar{height:42px;padding:0 10px;}
+    .panel-title{padding:8px 10px 4px;}
+    #palette{padding:0 8px;gap:5px;}
+    .palette-item{padding:7px 8px;font-size:12px;}
+    #center{padding:12px;}
   }
 </style>
 </head>
@@ -429,6 +440,7 @@
   const canvas = document.getElementById('canvas');
   const canvasEmptyHint = document.getElementById('canvasEmptyHint');
   const explorer = document.getElementById('explorer');
+  const canvasCenter = document.getElementById('center'); // declared early: showPanel()/updateCanvasScale() below need it right away
 
   const DEFAULTS = {
     button:   {w:120,h:40,text:'Botón',color:'#ffffff',bg:'#5b6ef5',fontSize:14,radius:8},
@@ -476,15 +488,23 @@
   // initial mobile panel
   if(isMobile()) showPanel('center');
 
-  /* ============ CANVAS SCALING (mobile) ============ */
-  const canvasCenter = document.getElementById('center');
+  /* ============ CANVAS SCALING (fits the 960x600 design surface to whatever
+     space is actually available, at any viewport size/orientation) ============ */
   function updateCanvasScale(){
-    if(!isMobile()){ document.documentElement.style.setProperty('--canvas-scale', 1); return; }
-    const availW = canvasCenter.clientWidth - 28; // minus padding
-    const scale = Math.max(0.18, Math.min(1, availW / 960));
+    const cs = getComputedStyle(canvasCenter);
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    const availW = canvasCenter.clientWidth - padX;
+    const availH = canvasCenter.clientHeight - padY;
+    if(availW <= 0 || availH <= 0) return; // not laid out yet — a later call will correct it
+    const scale = Math.max(0.12, Math.min(1, availW / 960, availH / 600));
     document.documentElement.style.setProperty('--canvas-scale', scale.toFixed(4));
   }
   window.addEventListener('resize', updateCanvasScale);
+  window.addEventListener('orientationchange', ()=>setTimeout(updateCanvasScale, 80));
+  if(window.ResizeObserver){
+    new ResizeObserver(()=>updateCanvasScale()).observe(canvasCenter);
+  }
   updateCanvasScale();
 
   const CANVAS_W = 960, CANVAS_H = 600;
