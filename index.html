@@ -1347,6 +1347,75 @@
     onKeyUp:   {group:'Teclado y mouse', label:'⌨️ Al soltar una tecla', color:'#6bd47a', fields:[{key:'key',label:'Tecla (ej: ArrowUp, a, Enter, cualquiera=*)',default:'*'},{key:'action',label:'Código a ejecutar',default:"console.log('tecla soltada');"}]},
     onMouseClick:{group:'Teclado y mouse', label:'🖱️ Al hacer clic en el canvas', color:'#6bd47a', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'action',label:'Código a ejecutar (usa vars.mouseX / vars.mouseY)',default:"console.log(vars.mouseX, vars.mouseY);"}]},
     onMouseMove: {group:'Teclado y mouse', label:'🖱️ Al mover el mouse sobre el canvas', color:'#6bd47a', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'action',label:'Código a ejecutar (usa vars.mouseX / vars.mouseY)',default:''}]},
+
+    // ---- Sprites ----
+    spriteLoad:{group:'Sprites', label:'🖼️ Cargar imagen / sprite', color:'#ffd23f', fields:[{key:'name',label:'Nombre del sprite',default:'jugador'},{key:'url',label:'URL de la imagen',default:'https://'}]},
+    spriteDraw:{group:'Sprites', label:'🎨 Dibujar sprite', color:'#ffd23f', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'name',label:'Nombre del sprite',default:'jugador'},{key:'x',label:'X',default:'0'},{key:'y',label:'Y',default:'0'},{key:'w',label:'Ancho',default:'64'},{key:'h',label:'Alto',default:'64'},{key:'flipX',label:'Invertir horizontal (true/false)',default:'false'},{key:'flipY',label:'Invertir vertical (true/false)',default:'false'}]},
+    spriteDrawFrame:{group:'Sprites', label:'🎞️ Dibujar recorte de sprite sheet', color:'#ffd23f', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'name',label:'Nombre del sprite',default:'hoja'},{key:'frameX',label:'X del recorte en la hoja',default:'0'},{key:'frameY',label:'Y del recorte en la hoja',default:'0'},{key:'frameW',label:'Ancho del recorte',default:'32'},{key:'frameH',label:'Alto del recorte',default:'32'},{key:'x',label:'X destino',default:'0'},{key:'y',label:'Y destino',default:'0'},{key:'w',label:'Ancho destino',default:'32'},{key:'h',label:'Alto destino',default:'32'}]},
+
+    // ---- Animación de sprites ----
+    animCreate:{group:'Animación de sprites', label:'🧩 Crear animación desde sprite sheet', color:'#ff6f9c', fields:[{key:'name',label:'Nombre de la animación',default:'correr'},{key:'imageName',label:'Nombre del sprite ya cargado',default:'hoja'},{key:'frameW',label:'Ancho de cada frame',default:'32'},{key:'frameH',label:'Alto de cada frame',default:'32'},{key:'frameCount',label:'Cantidad de frames',default:'4'},{key:'fps',label:'Frames por segundo',default:'8'}]},
+    animPlay:  {group:'Animación de sprites', label:'▶️ Reproducir animación', color:'#ff6f9c', fields:[{key:'name',label:'Nombre de la animación',default:'correr'}]},
+    animStop:  {group:'Animación de sprites', label:'⏹️ Detener animación', color:'#ff6f9c', fields:[{key:'name',label:'Nombre de la animación',default:'correr'}]},
+    animDraw:  {group:'Animación de sprites', label:'🖌️ Dibujar frame actual de la animación', color:'#ff6f9c', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'name',label:'Nombre de la animación',default:'correr'},{key:'x',label:'X',default:'0'},{key:'y',label:'Y',default:'0'},{key:'scale',label:'Escala',default:'1'}]},
+
+    // ---- Colisiones ----
+    collideRects:{group:'Colisiones', label:'📦 ¿Chocan dos rectángulos?', color:'#ff4d6d', fields:[{key:'ax',label:'A: X',default:'0'},{key:'ay',label:'A: Y',default:'0'},{key:'aw',label:'A: Ancho',default:'32'},{key:'ah',label:'A: Alto',default:'32'},{key:'bx',label:'B: X',default:'0'},{key:'by',label:'B: Y',default:'0'},{key:'bw',label:'B: Ancho',default:'32'},{key:'bh',label:'B: Alto',default:'32'},{key:'saveTo',label:'Guardar resultado (true/false) en variable',default:'chocan'}]},
+    circlesCollide:{group:'Colisiones', label:'⚪ ¿Chocan dos círculos?', color:'#ff4d6d', fields:[{key:'x1',label:'A: X centro',default:'0'},{key:'y1',label:'A: Y centro',default:'0'},{key:'r1',label:'A: Radio',default:'16'},{key:'x2',label:'B: X centro',default:'0'},{key:'y2',label:'B: Y centro',default:'0'},{key:'r2',label:'B: Radio',default:'16'},{key:'saveTo',label:'Guardar resultado (true/false) en variable',default:'chocan'}]},
+    pointInRect:{group:'Colisiones', label:'📍 ¿Un punto está dentro de un área?', color:'#ff4d6d', fields:[{key:'px',label:'Punto X',default:'0'},{key:'py',label:'Punto Y',default:'0'},{key:'rx',label:'Área: X',default:'0'},{key:'ry',label:'Área: Y',default:'0'},{key:'rw',label:'Área: Ancho',default:'100'},{key:'rh',label:'Área: Alto',default:'100'},{key:'saveTo',label:'Guardar resultado (true/false) en variable',default:'dentro'}]},
+    distanceBetween:{group:'Colisiones', label:'📏 Distancia entre dos puntos', color:'#ff4d6d', fields:[{key:'x1',label:'X1',default:'0'},{key:'y1',label:'Y1',default:'0'},{key:'x2',label:'X2',default:'0'},{key:'y2',label:'Y2',default:'0'},{key:'saveTo',label:'Guardar en variable',default:'distancia'}]},
+    keepInBounds:{group:'Colisiones', label:'🚧 Mantener dentro del canvas', color:'#ff4d6d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'xVar',label:'Variable X (se modifica)',default:'x'},{key:'yVar',label:'Variable Y (se modifica)',default:'y'},{key:'w',label:'Ancho del objeto',default:'32'},{key:'h',label:'Alto del objeto',default:'32'}]},
+    bounceOffEdges:{group:'Colisiones', label:'🏓 Rebotar en los bordes del canvas', color:'#ff4d6d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'xVar',label:'Variable X (se modifica)',default:'x'},{key:'yVar',label:'Variable Y (se modifica)',default:'y'},{key:'vxVar',label:'Variable velocidad X (se modifica)',default:'vx'},{key:'vyVar',label:'Variable velocidad Y (se modifica)',default:'vy'},{key:'w',label:'Ancho del objeto',default:'32'},{key:'h',label:'Alto del objeto',default:'32'}]},
+
+    // ---- Eventos ----
+    onClick:     {group:'Eventos', label:'🖱️ Al hacer clic en un elemento', color:'#4dd0e1', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'action',label:'Código a ejecutar',default:''}]},
+    onDoubleClick:{group:'Eventos', label:'🖱️ Al hacer doble clic en un elemento', color:'#4dd0e1', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'action',label:'Código a ejecutar',default:''}]},
+    onMouseEnter:{group:'Eventos', label:'➡️ Al pasar el mouse por encima', color:'#4dd0e1', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'action',label:'Código a ejecutar',default:''}]},
+    onMouseLeave:{group:'Eventos', label:'⬅️ Al retirar el mouse de encima', color:'#4dd0e1', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'action',label:'Código a ejecutar',default:''}]},
+    onChange:    {group:'Eventos', label:'✏️ Al cambiar el valor (input/casilla)', color:'#4dd0e1', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'saveTo',label:'Guardar valor en variable (opcional)',default:''},{key:'action',label:'Código a ejecutar',default:''}]},
+    onFocus:     {group:'Eventos', label:'🎯 Al enfocar un elemento', color:'#4dd0e1', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'action',label:'Código a ejecutar',default:''}]},
+    onBlur:      {group:'Eventos', label:'👋 Al salir del enfoque (blur)', color:'#4dd0e1', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'action',label:'Código a ejecutar',default:''}]},
+    onPageLoad:  {group:'Eventos', label:'🚀 Al cargar la página', color:'#4dd0e1', fields:[{key:'action',label:'Código a ejecutar',default:''}]},
+
+    // ---- Audio ----
+    soundLoad: {group:'Audio', label:'🎵 Cargar sonido', color:'#a06cff', fields:[{key:'name',label:'Nombre del sonido',default:'efecto'},{key:'url',label:'URL del audio (mp3/ogg/wav)',default:'https://'}]},
+    soundPlay: {group:'Audio', label:'▶️ Reproducir sonido', color:'#a06cff', fields:[{key:'name',label:'Nombre del sonido',default:'efecto'}]},
+    soundPause:{group:'Audio', label:'⏸️ Pausar sonido', color:'#a06cff', fields:[{key:'name',label:'Nombre del sonido',default:'efecto'}]},
+    soundStop: {group:'Audio', label:'⏹️ Detener sonido (volver al inicio)', color:'#a06cff', fields:[{key:'name',label:'Nombre del sonido',default:'efecto'}]},
+    soundLoop: {group:'Audio', label:'🔁 Activar / desactivar repetición', color:'#a06cff', fields:[{key:'name',label:'Nombre del sonido',default:'musica'},{key:'loop',label:'Repetir (true/false)',default:'true'}]},
+    soundVolume:{group:'Audio', label:'🔊 Cambiar volumen (0 a 1)', color:'#a06cff', fields:[{key:'name',label:'Nombre del sonido',default:'efecto'},{key:'volume',label:'Volumen (0 a 1)',default:'1'}]},
+
+    // ---- Bucle de juego ----
+    gameLoopStart:{group:'Bucle de juego', label:'🎮 Iniciar bucle de juego (game loop)', color:'#ff9f4a', fields:[{key:'action',label:'Código a ejecutar en cada frame (usa vars.deltaTime en segundos)',default:''}]},
+    gameLoopStop: {group:'Bucle de juego', label:'🛑 Detener bucle de juego', color:'#ff9f4a', fields:[]},
+    fpsShowIn: {group:'Bucle de juego', label:'📟 Mostrar FPS en un elemento', color:'#ff9f4a', fields:[{key:'domId',label:'ID del elemento',default:''}]},
+
+    // ---- Texto (strings) ----
+    strConcat: {group:'Texto', label:'🔤 Unir textos', color:'#4fd1c5', fields:[{key:'saveTo',label:'Guardar en variable',default:'resultado'},{key:'a',label:'Texto A (expresión)',default:"''"},{key:'b',label:'Texto B (expresión)',default:"''"}]},
+    strLength: {group:'Texto', label:'📏 Longitud del texto', color:'#4fd1c5', fields:[{key:'value',label:'Texto (expresión)',default:''},{key:'saveTo',label:'Guardar en variable',default:'longitud'}]},
+    strCase:   {group:'Texto', label:'🔡 Mayúsculas / minúsculas', color:'#4fd1c5', fields:[{key:'value',label:'Texto (expresión)',default:''},{key:'mode',label:'Modo (upper, lower)',default:'upper'},{key:'saveTo',label:'Guardar en variable',default:'resultado'}]},
+    strReplace:{group:'Texto', label:'♻️ Reemplazar texto', color:'#4fd1c5', fields:[{key:'value',label:'Texto original (expresión)',default:''},{key:'search',label:'Buscar',default:''},{key:'replaceWith',label:'Reemplazar por',default:''},{key:'saveTo',label:'Guardar en variable',default:'resultado'}]},
+    strContains:{group:'Texto', label:'🔎 ¿Contiene un texto?', color:'#4fd1c5', fields:[{key:'value',label:'Texto (expresión)',default:''},{key:'search',label:'Buscar',default:''},{key:'saveTo',label:'Guardar resultado (true/false)',default:'contiene'}]},
+    strSplit:  {group:'Texto', label:'✂️ Separar texto en array', color:'#4fd1c5', fields:[{key:'value',label:'Texto (expresión)',default:''},{key:'separator',label:'Separador',default:','},{key:'saveTo',label:'Guardar array en variable',default:'partes'}]},
+
+    // ---- Fecha y hora ----
+    dateNow:  {group:'Fecha y hora', label:'🕒 Guardar fecha y hora actual', color:'#c9a15f', fields:[{key:'saveTo',label:'Guardar en variable',default:'ahora'}]},
+    dateFormatted:{group:'Fecha y hora', label:'📅 Guardar hora formateada (HH:MM:SS)', color:'#c9a15f', fields:[{key:'saveTo',label:'Guardar en variable',default:'horaTexto'}]},
+    timestampNow:{group:'Fecha y hora', label:'⏱️ Guardar marca de tiempo (ms)', color:'#c9a15f', fields:[{key:'saveTo',label:'Guardar en variable',default:'marcaTiempo'}]},
+
+    // ---- Animaciones CSS ----
+    animateMove:{group:'Animaciones', label:'➡️ Mover elemento (animado)', color:'#ff7ab6', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'x',label:'Nueva posición X (px)',default:'0'},{key:'y',label:'Nueva posición Y (px)',default:'0'},{key:'duration',label:'Duración (segundos)',default:'0.5'}]},
+    animateFade:{group:'Animaciones', label:'🌫️ Aparecer / desaparecer (fade)', color:'#ff7ab6', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'opacity',label:'Opacidad final (0 a 1)',default:'0'},{key:'duration',label:'Duración (segundos)',default:'0.5'}]},
+    animateScale:{group:'Animaciones', label:'🔎 Escalar elemento (zoom)', color:'#ff7ab6', fields:[{key:'domId',label:'ID del elemento',default:''},{key:'scale',label:'Escala final (ej: 1.2)',default:'1'},{key:'duration',label:'Duración (segundos)',default:'0.5'}]},
+
+    // ---- Utilidades ----
+    copyClipboard:{group:'Utilidades', label:'📋 Copiar texto al portapapeles', color:'#8f9bb3', fields:[{key:'value',label:'Texto a copiar (expresión)',default:''}]},
+    toggleFullscreen:{group:'Utilidades', label:'⛶ Pantalla completa (activar/salir)', color:'#8f9bb3', fields:[]},
+    vibrateDevice:{group:'Utilidades', label:'📳 Vibrar dispositivo (móvil)', color:'#8f9bb3', fields:[{key:'ms',label:'Duración (ms)',default:'200'}]},
+    downloadText:{group:'Utilidades', label:'💾 Descargar texto como archivo', color:'#8f9bb3', fields:[{key:'filename',label:'Nombre de archivo',default:'datos.txt'},{key:'content',label:'Contenido (expresión)',default:"''"}]},
+    reloadPage:{group:'Utilidades', label:'🔄 Recargar la página', color:'#8f9bb3', fields:[]},
+    confirmDialog:{group:'Utilidades', label:'❓ Preguntar sí/no (confirm)', color:'#8f9bb3', fields:[{key:'message',label:'Pregunta',default:'¿Estás seguro?'},{key:'saveTo',label:'Guardar respuesta (true/false)',default:'respuesta'}]},
+    promptInput:{group:'Utilidades', label:'⌨️ Pedir texto al usuario (prompt)', color:'#8f9bb3', fields:[{key:'message',label:'Mensaje',default:'Escribe algo:'},{key:'saveTo',label:'Guardar respuesta en variable',default:'entrada'}]},
   };
 
   const jsBlockListEl = document.getElementById('jsBlockList');
@@ -1647,6 +1716,75 @@ body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; back
       case 'onKeyUp':   return `document.addEventListener('keyup', function(e){ ${(!p.key||p.key==='*') ? '' : `if(e.key !== '${esc(p.key)}') return; `}${p.action||''} });`;
       case 'onMouseClick': return `{ const c = document.getElementById('${esc(p.domId)}'); if(c) c.addEventListener('click', function(e){ const r=c.getBoundingClientRect(); vars.mouseX = e.clientX-r.left; vars.mouseY = e.clientY-r.top; ${p.action||''} }); }`;
       case 'onMouseMove':  return `{ const c = document.getElementById('${esc(p.domId)}'); if(c) c.addEventListener('mousemove', function(e){ const r=c.getBoundingClientRect(); vars.mouseX = e.clientX-r.left; vars.mouseY = e.clientY-r.top; ${p.action||''} }); }`;
+
+      // sprites
+      case 'spriteLoad': return `${vid(p.name)} = new Image(); ${vid(p.name)}.src = '${esc(p.url)}';`;
+      case 'spriteDraw': return `{ const c = document.getElementById('${esc(p.domId)}'); const img = ${vid(p.name)}; if(c && img){ const ctx = c.getContext('2d'); ctx.save(); const fx = (${p.flipX||false}) ? -1 : 1; const fy = (${p.flipY||false}) ? -1 : 1; ctx.translate(${p.x} + (fx<0 ? ${p.w} : 0), ${p.y} + (fy<0 ? ${p.h} : 0)); ctx.scale(fx, fy); ctx.drawImage(img, 0, 0, ${p.w}, ${p.h}); ctx.restore(); } }`;
+      case 'spriteDrawFrame': return `{ const c = document.getElementById('${esc(p.domId)}'); const img = ${vid(p.name)}; if(c && img){ const ctx = c.getContext('2d'); ctx.drawImage(img, ${p.frameX}, ${p.frameY}, ${p.frameW}, ${p.frameH}, ${p.x}, ${p.y}, ${p.w}, ${p.h}); } }`;
+
+      // animación de sprites
+      case 'animCreate': return `${vid(p.name)} = { img: ${vid(p.imageName)}, frameW: ${p.frameW}, frameH: ${p.frameH}, frameCount: ${p.frameCount}, fps: ${p.fps}, frame: 0, timer: null };`;
+      case 'animPlay':   return `if(${vid(p.name)} && !${vid(p.name)}.timer){ ${vid(p.name)}.timer = setInterval(() => { ${vid(p.name)}.frame = (${vid(p.name)}.frame + 1) % ${vid(p.name)}.frameCount; }, 1000 / (${vid(p.name)}.fps || 8)); }`;
+      case 'animStop':   return `if(${vid(p.name)} && ${vid(p.name)}.timer){ clearInterval(${vid(p.name)}.timer); ${vid(p.name)}.timer = null; }`;
+      case 'animDraw':   return `{ const c = document.getElementById('${esc(p.domId)}'); const a = ${vid(p.name)}; if(c && a && a.img){ const ctx = c.getContext('2d'); ctx.drawImage(a.img, a.frame * a.frameW, 0, a.frameW, a.frameH, ${p.x}, ${p.y}, a.frameW * (${p.scale||1}), a.frameH * (${p.scale||1})); } }`;
+
+      // colisiones
+      case 'collideRects': return `${vid(p.saveTo)} = !((${p.ax}) + (${p.aw}) <= (${p.bx}) || (${p.bx}) + (${p.bw}) <= (${p.ax}) || (${p.ay}) + (${p.ah}) <= (${p.by}) || (${p.by}) + (${p.bh}) <= (${p.ay}));`;
+      case 'circlesCollide': return `${vid(p.saveTo)} = Math.hypot((${p.x2}) - (${p.x1}), (${p.y2}) - (${p.y1})) < ((${p.r1}) + (${p.r2}));`;
+      case 'pointInRect': return `${vid(p.saveTo)} = ((${p.px}) >= (${p.rx}) && (${p.px}) <= (${p.rx}) + (${p.rw}) && (${p.py}) >= (${p.ry}) && (${p.py}) <= (${p.ry}) + (${p.rh}));`;
+      case 'distanceBetween': return `${vid(p.saveTo)} = Math.hypot((${p.x2}) - (${p.x1}), (${p.y2}) - (${p.y1}));`;
+      case 'keepInBounds': return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ ${vid(p.xVar)} = Math.min(Math.max(${vid(p.xVar)}, 0), c.width - (${p.w})); ${vid(p.yVar)} = Math.min(Math.max(${vid(p.yVar)}, 0), c.height - (${p.h})); } }`;
+      case 'bounceOffEdges': return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ ${vid(p.xVar)} += ${vid(p.vxVar)}; ${vid(p.yVar)} += ${vid(p.vyVar)}; if(${vid(p.xVar)} <= 0 || ${vid(p.xVar)} + (${p.w}) >= c.width){ ${vid(p.vxVar)} *= -1; ${vid(p.xVar)} = Math.min(Math.max(${vid(p.xVar)}, 0), c.width - (${p.w})); } if(${vid(p.yVar)} <= 0 || ${vid(p.yVar)} + (${p.h}) >= c.height){ ${vid(p.vyVar)} *= -1; ${vid(p.yVar)} = Math.min(Math.max(${vid(p.yVar)}, 0), c.height - (${p.h})); } } }`;
+
+      // eventos genéricos
+      case 'onClick':       return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.addEventListener('click', function(e){ ${p.action||''} }); }`;
+      case 'onDoubleClick': return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.addEventListener('dblclick', function(e){ ${p.action||''} }); }`;
+      case 'onMouseEnter':  return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.addEventListener('mouseenter', function(e){ ${p.action||''} }); }`;
+      case 'onMouseLeave':  return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.addEventListener('mouseleave', function(e){ ${p.action||''} }); }`;
+      case 'onChange':      return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.addEventListener('change', function(e){ ${p.saveTo ? `${vid(p.saveTo)} = (e.target.type === 'checkbox') ? e.target.checked : e.target.value;` : ''} ${p.action||''} }); }`;
+      case 'onFocus':       return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.addEventListener('focus', function(e){ ${p.action||''} }); }`;
+      case 'onBlur':        return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.addEventListener('blur', function(e){ ${p.action||''} }); }`;
+      case 'onPageLoad':    return `(function(){ ${p.action||''} })();`;
+
+      // audio
+      case 'soundLoad':  return `${vid(p.name)} = new Audio('${esc(p.url)}');`;
+      case 'soundPlay':  return `if(${vid(p.name)}) ${vid(p.name)}.play().catch(()=>{});`;
+      case 'soundPause': return `if(${vid(p.name)}) ${vid(p.name)}.pause();`;
+      case 'soundStop':  return `if(${vid(p.name)}){ ${vid(p.name)}.pause(); ${vid(p.name)}.currentTime = 0; }`;
+      case 'soundLoop':  return `if(${vid(p.name)}) ${vid(p.name)}.loop = (${p.loop});`;
+      case 'soundVolume':return `if(${vid(p.name)}) ${vid(p.name)}.volume = Math.min(Math.max(${p.volume}, 0), 1);`;
+
+      // bucle de juego
+      case 'gameLoopStart': return `{ let __lastT = performance.now(); function __loop(t){ vars.deltaTime = (t - __lastT) / 1000; __lastT = t; vars.__gameLoopId = requestAnimationFrame(__loop); ${p.action||''} } vars.__gameLoopId = requestAnimationFrame(__loop); }`;
+      case 'gameLoopStop':  return `if(vars.__gameLoopId) cancelAnimationFrame(vars.__gameLoopId);`;
+      case 'fpsShowIn': return `{ let __fc = 0; const __el = document.getElementById('${esc(p.domId)}'); function __fpsTick(){ __fc++; requestAnimationFrame(__fpsTick); } requestAnimationFrame(__fpsTick); setInterval(()=>{ if(__el) __el.textContent = __fc + ' FPS'; __fc = 0; }, 1000); }`;
+
+      // texto
+      case 'strConcat':  return `${vid(p.saveTo)} = String(${p.a}) + String(${p.b});`;
+      case 'strLength':  return `${vid(p.saveTo)} = String(${p.value}).length;`;
+      case 'strCase':    return `${vid(p.saveTo)} = ('${p.mode}' === 'lower') ? String(${p.value}).toLowerCase() : String(${p.value}).toUpperCase();`;
+      case 'strReplace': return `${vid(p.saveTo)} = String(${p.value}).split('${esc(p.search)}').join('${esc(p.replaceWith)}');`;
+      case 'strContains':return `${vid(p.saveTo)} = String(${p.value}).includes('${esc(p.search)}');`;
+      case 'strSplit':   return `${vid(p.saveTo)} = String(${p.value}).split('${esc(p.separator)}');`;
+
+      // fecha y hora
+      case 'dateNow':      return `${vid(p.saveTo)} = new Date();`;
+      case 'dateFormatted':return `${vid(p.saveTo)} = new Date().toLocaleTimeString();`;
+      case 'timestampNow': return `${vid(p.saveTo)} = Date.now();`;
+
+      // animaciones css
+      case 'animateMove': return `{ const el = document.getElementById('${esc(p.domId)}'); if(el){ el.style.transition = 'left ${p.duration}s, top ${p.duration}s'; el.style.left = (${p.x}) + 'px'; el.style.top = (${p.y}) + 'px'; } }`;
+      case 'animateFade': return `{ const el = document.getElementById('${esc(p.domId)}'); if(el){ el.style.transition = 'opacity ${p.duration}s'; el.style.opacity = ${p.opacity}; } }`;
+      case 'animateScale':return `{ const el = document.getElementById('${esc(p.domId)}'); if(el){ el.style.transition = 'transform ${p.duration}s'; el.style.transform = 'scale(${p.scale})'; } }`;
+
+      // utilidades
+      case 'copyClipboard':   return `navigator.clipboard.writeText(String(${p.value})).catch(()=>{});`;
+      case 'toggleFullscreen':return `if(!document.fullscreenElement){ document.documentElement.requestFullscreen().catch(()=>{}); } else { document.exitFullscreen(); }`;
+      case 'vibrateDevice':   return `if(navigator.vibrate) navigator.vibrate(${p.ms});`;
+      case 'downloadText':    return `{ const blob = new Blob([String(${p.content})], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '${esc(p.filename)}'; a.click(); URL.revokeObjectURL(a.href); }`;
+      case 'reloadPage':      return `window.location.reload();`;
+      case 'confirmDialog':   return `${vid(p.saveTo)} = confirm('${esc(p.message)}');`;
+      case 'promptInput':     return `${vid(p.saveTo)} = prompt('${esc(p.message)}');`;
 
       default: return '';
     }
