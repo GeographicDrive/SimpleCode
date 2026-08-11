@@ -1633,6 +1633,115 @@ body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; back
   // identifier-safe variable name
   function vid(name){ return 'vars.' + String(name||'x').trim().replace(/[^a-zA-Z0-9_$]/g,'_').replace(/^(\d)/,'_$1'); }
 
+  /* ============ AZÚCAR SINTÁCTICO DE VARIABLES ============
+     El usuario escribe "puntos" en cualquier caja de código JS y SimpleCode
+     lo reescribe automáticamente a "vars.puntos" (donde viven de verdad las
+     variables en el JS generado), sin que el usuario tenga que saber que
+     "vars" existe. Esto se aplica a TODOS los campos de código que el
+     usuario escribe a mano (los bloques "Código a ejecutar" de eventos,
+     temporizadores, bucle de juego, etc.) y también, como red de seguridad,
+     a cualquier otra expresión JS insertada por los bloques. */
+
+  // Recoge todos los nombres de variables/arrays/objetos que el usuario
+  // ha creado en el proyecto a través de los bloques de SimpleCode.
+  function collectSimpleCodeVarNames(){
+    const names = new Set();
+    const add = v => { if(v==null) return; const s = String(v).trim(); if(s) names.add(s); };
+    jsBlocks.forEach(block=>{
+      const p = block.params || {};
+      switch(block.type){
+        case 'varCreate': case 'varSet': case 'varInc': case 'varDec': case 'varShowIn':
+        case 'arrayCreate': case 'arrayPush': case 'arrayRemoveAt': case 'arraySet':
+        case 'arrayClear': case 'arraySort':
+        case 'objCreate': case 'objSet': case 'objDelete':
+        case 'spriteLoad': case 'soundLoad': case 'animCreate':
+          add(p.name); break;
+        case 'varSwap':
+          add(p.nameA); add(p.nameB); break;
+        case 'forEachBegin':
+          add(p.arrayName); break; // itemVar NO se añade: es una variable JS local normal
+        case 'keepInBounds': case 'bounceOffEdges':
+          add(p.xVar); add(p.yVar); add(p.vxVar); add(p.vyVar); break;
+        default: break;
+      }
+      // Cualquier campo "saveTo"/"varName" guarda el resultado en una variable de SimpleCode
+      add(p.saveTo);
+      add(p.varName);
+    });
+    return names;
+  }
+
+  // Reescribe identificadores sueltos que coincidan con variables de SimpleCode,
+  // convirtiendo "puntos" en "vars.puntos", sin tocar strings, comentarios,
+  // números, propiedades de objetos (algo.puntos) ni identificadores que solo
+  // contienen "puntos" como parte de otra palabra (misPuntos, puntosExtra...).
+  function rewriteVarsInCode(code, varNames){
+    if(!code || !varNames || varNames.size===0) return code;
+    const n = code.length;
+    let out = '';
+    let i = 0;
+    const isIdentStart = c => /[a-zA-Z_$]/.test(c);
+    const isIdentChar = c => /[a-zA-Z0-9_$]/.test(c);
+    while(i < n){
+      const c = code[i];
+      // comentario de línea
+      if(c === '/' && code[i+1] === '/'){
+        let j = code.indexOf('\n', i);
+        if(j === -1) j = n;
+        out += code.slice(i, j);
+        i = j;
+        continue;
+      }
+      // comentario de bloque
+      if(c === '/' && code[i+1] === '*'){
+        let j = code.indexOf('*/', i+2);
+        j = (j === -1) ? n : j+2;
+        out += code.slice(i, j);
+        i = j;
+        continue;
+      }
+      // strings ('...' , "...", `...`)
+      if(c === '\'' || c === '"' || c === '`'){
+        const quote = c;
+        let j = i+1;
+        while(j < n){
+          if(code[j] === '\\'){ j += 2; continue; }
+          if(code[j] === quote){ j++; break; }
+          j++;
+        }
+        out += code.slice(i, j);
+        i = j;
+        continue;
+      }
+      // identificador
+      if(isIdentStart(c)){
+        let j = i+1;
+        while(j < n && isIdentChar(code[j])) j++;
+        const ident = code.slice(i, j);
+        // ¿el identificador anterior termina en "." ? (ident.puntos -> es una propiedad, no tocar)
+        let k = out.length - 1;
+        while(k >= 0 && /\s/.test(out[k])) k--;
+        const prevChar = k >= 0 ? out[k] : '';
+        // ¿el identificador es una clave de objeto literal? (ej: { puntos: 1 })
+        let m = j;
+        while(m < n && /\s/.test(code[m])) m++;
+        const nextChar = code[m] || '';
+        const isPropertyAccess = prevChar === '.';
+        const isObjectKey = nextChar === ':' && (prevChar === '{' || prevChar === ',' || prevChar === '');
+        if(varNames.has(ident) && !isPropertyAccess && !isObjectKey){
+          out += 'vars.' + ident;
+        } else {
+          out += ident;
+        }
+        i = j;
+        continue;
+      }
+      out += c;
+      i++;
+    }
+    return out;
+  }
+
   function blockToJsLine(block){
     const p = block.params;
     const esc = s => (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
@@ -1796,11 +1905,16 @@ body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; back
 
   function generateJS(){
     const needsAsync = jsBlocks.some(b=>BLOCK_ASYNC.includes(b.type));
+    const simpleCodeVarNames = collectSimpleCodeVarNames();
     let indent = 1;
     const lines = [];
     jsBlocks.forEach(block=>{
-      const raw = blockToJsLine(block);
+      let raw = blockToJsLine(block);
       if(!raw) return;
+      // Azúcar sintáctico: "puntos" -> "vars.puntos" en todo el código
+      // generado a partir de este bloque (cubre tanto las cajas de código
+      // libre del usuario como cualquier otra expresión JS de los bloques).
+      raw = rewriteVarsInCode(raw, simpleCodeVarNames);
       if(BLOCK_CLOSE.includes(block.type) || block.type==='elseBegin'){
         indent = Math.max(1, indent - 1);
       }
