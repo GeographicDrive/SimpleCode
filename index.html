@@ -355,6 +355,7 @@
         <div class="palette-item" data-type="box"><span class="ico">▢</span>Panel / Div</div>
         <div class="palette-item" data-type="link"><span class="ico">⇢</span>Enlace</div>
         <div class="palette-item" data-type="checkbox"><span class="ico">☑</span>Casilla</div>
+        <div class="palette-item" data-type="canvas"><span class="ico">▤</span>Canvas (dibujo)</div>
       </div>
       <div id="explorerWrap">
         <div class="panel-title">Jerarquía</div>
@@ -523,11 +524,12 @@
     image:    {w:180,h:120,src:'https://placehold.co/300x200',color:'#000000',bg:'#eeeeee',fontSize:14,radius:6},
     box:      {w:220,h:140,text:'',color:'#333333',bg:'#f1f1f4',fontSize:14,radius:10},
     link:     {w:120,h:26,text:'Enlace',href:'#',color:'#3355ff',bg:'#00000000',fontSize:14,radius:0},
-    checkbox: {w:160,h:26,text:'Opción',color:'#222222',bg:'#00000000',fontSize:14,radius:0}
+    checkbox: {w:160,h:26,text:'Opción',color:'#222222',bg:'#00000000',fontSize:14,radius:0},
+    canvas:   {w:320,h:220,text:'',color:'#000000',bg:'#ffffff',fontSize:14,radius:6}
   };
 
-  const TYPE_ICON = {button:'▭',text:'T',heading:'H',input:'▯',image:'▧',box:'▢',link:'⇢',checkbox:'☑'};
-  const TYPE_LABEL = {button:'Botón',text:'Texto',heading:'Título',input:'Campo',image:'Imagen',box:'Panel',link:'Enlace',checkbox:'Casilla'};
+  const TYPE_ICON = {button:'▭',text:'T',heading:'H',input:'▯',image:'▧',box:'▢',link:'⇢',checkbox:'☑',canvas:'▤'};
+  const TYPE_LABEL = {button:'Botón',text:'Texto',heading:'Título',input:'Campo',image:'Imagen',box:'Panel',link:'Enlace',checkbox:'Casilla',canvas:'Canvas'};
 
   /* ============ TABS ============ */
   function activateTab(tab){
@@ -730,6 +732,11 @@
       case 'checkbox':
         node = document.createElement('div');
         node.innerHTML = '☐ ' + escapeHtml(el.text);
+        break;
+      case 'canvas':
+        node = document.createElement('canvas');
+        node.width = el.w; node.height = el.h;
+        node.style.display = 'block';
         break;
       default:
         node = document.createElement('div');
@@ -1264,22 +1271,103 @@
 
   /* ============ JS BLOCK EDITOR (Scratch-style, no raw code needed) ============ */
   const BLOCK_DEFS = {
-    alert:  {label:'💬 Mostrar un mensaje', color:'#ff9a5a', fields:[{key:'message', label:'Mensaje', default:'¡Hola!'}]},
-    log:    {label:'🖨️ Escribir en la consola', color:'#5b6ef5', fields:[{key:'message', label:'Mensaje', default:'Hola'}]},
-    redirect:{label:'🔗 Ir a una página web', color:'#5ee6c3', fields:[{key:'url', label:'URL', default:'https://'}]},
-    wait:   {label:'⏱️ Esperar unos segundos', color:'#9297a8', fields:[{key:'seconds', label:'Segundos', default:'1'}]},
-    setText:{label:'✏️ Cambiar el texto de un elemento', color:'#ff6b6b', fields:[{key:'domId', label:'ID del elemento', default:''},{key:'text', label:'Nuevo texto', default:''}]},
-    setBg:  {label:'🎨 Cambiar el color de fondo de un elemento', color:'#c15ee6', fields:[{key:'domId', label:'ID del elemento', default:''},{key:'color', label:'Color (ej: #ff9a5a)', default:'#ff9a5a'}]},
-    toggleVis:{label:'👁️ Mostrar / ocultar un elemento', color:'#e6c15e', fields:[{key:'domId', label:'ID del elemento', default:''}]}
+    // ---- Acciones básicas ----
+    alert:  {group:'Acciones básicas', label:'💬 Mostrar un mensaje', color:'#ff9a5a', fields:[{key:'message', label:'Mensaje', default:'¡Hola!'}]},
+    log:    {group:'Acciones básicas', label:'🖨️ Escribir en la consola', color:'#5b6ef5', fields:[{key:'message', label:'Mensaje', default:'Hola'}]},
+    redirect:{group:'Acciones básicas', label:'🔗 Ir a una página web', color:'#5ee6c3', fields:[{key:'url', label:'URL', default:'https://'}]},
+    wait:   {group:'Acciones básicas', label:'⏱️ Esperar unos segundos', color:'#9297a8', fields:[{key:'seconds', label:'Segundos', default:'1'}]},
+    setText:{group:'Acciones básicas', label:'✏️ Cambiar el texto de un elemento', color:'#ff6b6b', fields:[{key:'domId', label:'ID del elemento', default:''},{key:'text', label:'Nuevo texto', default:''}]},
+    setBg:  {group:'Acciones básicas', label:'🎨 Cambiar el color de fondo de un elemento', color:'#c15ee6', fields:[{key:'domId', label:'ID del elemento', default:''},{key:'color', label:'Color (ej: #ff9a5a)', default:'#ff9a5a'}]},
+    toggleVis:{group:'Acciones básicas', label:'👁️ Mostrar / ocultar un elemento', color:'#e6c15e', fields:[{key:'domId', label:'ID del elemento', default:''}]},
+
+    // ---- Variables ----
+    varCreate:{group:'Variables', label:'🧮 Crear variable', color:'#4fb3ff', fields:[{key:'name',label:'Nombre',default:'puntos'},{key:'value',label:'Valor inicial (ej: 0, \'texto\', true)',default:'0'}]},
+    varSet:   {group:'Variables', label:'✒️ Cambiar variable', color:'#4fb3ff', fields:[{key:'name',label:'Nombre',default:'puntos'},{key:'value',label:'Nuevo valor (expresión JS)',default:'0'}]},
+    varInc:   {group:'Variables', label:'➕ Incrementar variable', color:'#4fb3ff', fields:[{key:'name',label:'Nombre',default:'puntos'},{key:'amount',label:'Cantidad',default:'1'}]},
+    varDec:   {group:'Variables', label:'➖ Decrementar variable', color:'#4fb3ff', fields:[{key:'name',label:'Nombre',default:'puntos'},{key:'amount',label:'Cantidad',default:'1'}]},
+    varSwap:  {group:'Variables', label:'🔀 Intercambiar dos variables', color:'#4fb3ff', fields:[{key:'nameA',label:'Variable A',default:'a'},{key:'nameB',label:'Variable B',default:'b'}]},
+    varShowIn:{group:'Variables', label:'📤 Mostrar variable en un elemento', color:'#4fb3ff', fields:[{key:'name',label:'Nombre variable',default:'puntos'},{key:'domId',label:'ID del elemento',default:''}]},
+
+    // ---- Operaciones / Matemáticas ----
+    mathSet:  {group:'Matemáticas', label:'🧮 Calcular y guardar en variable', color:'#38b2a3', fields:[{key:'name',label:'Guardar en variable',default:'resultado'},{key:'a',label:'Valor A',default:'1'},{key:'op',label:'Operación (+ - * / % **)',default:'+'},{key:'b',label:'Valor B',default:'1'}]},
+    mathRound:{group:'Matemáticas', label:'🔵 Redondear / piso / techo', color:'#38b2a3', fields:[{key:'name',label:'Guardar en variable',default:'resultado'},{key:'value',label:'Valor',default:'0'},{key:'mode',label:'Modo (round, floor, ceil, abs)',default:'round'}]},
+    mathRandom:{group:'Matemáticas', label:'🎲 Número aleatorio', color:'#38b2a3', fields:[{key:'name',label:'Guardar en variable',default:'azar'},{key:'min',label:'Mínimo',default:'1'},{key:'max',label:'Máximo',default:'10'}]},
+    mathClamp:{group:'Matemáticas', label:'📏 Clamp (limitar valor entre rango)', color:'#38b2a3', fields:[{key:'name',label:'Guardar en variable',default:'resultado'},{key:'value',label:'Valor',default:'0'},{key:'min',label:'Mínimo',default:'0'},{key:'max',label:'Máximo',default:'100'}]},
+    mathTrig:{group:'Matemáticas', label:'📐 Seno / coseno / tangente', color:'#38b2a3', fields:[{key:'name',label:'Guardar en variable',default:'resultado'},{key:'fn',label:'Función (sin, cos, tan)',default:'sin'},{key:'value',label:'Ángulo en radianes',default:'0'}]},
+
+    // ---- Control de flujo ----
+    ifBegin:  {group:'Control de flujo', label:'❓ Si... (inicio)', color:'#ffb84f', fields:[{key:'a',label:'Valor A',default:''},{key:'op',label:'Comparación (== != > < >= <=)',default:'=='},{key:'b',label:'Valor B',default:''}]},
+    elseBegin:{group:'Control de flujo', label:'↩️ Si no... (else)', color:'#ffb84f', fields:[]},
+    ifEnd:    {group:'Control de flujo', label:'⏹️ Fin del Si', color:'#ffb84f', fields:[]},
+    repeatBegin:{group:'Control de flujo', label:'🔁 Repetir N veces (inicio)', color:'#f77c9a', fields:[{key:'times',label:'Veces',default:'10'}]},
+    repeatEnd:  {group:'Control de flujo', label:'⏹️ Fin de Repetir', color:'#f77c9a', fields:[]},
+    whileBegin:{group:'Control de flujo', label:'🔄 Repetir mientras... (inicio)', color:'#f77c9a', fields:[{key:'a',label:'Valor A',default:''},{key:'op',label:'Comparación (== != > < >= <=)',default:'<'},{key:'b',label:'Valor B',default:''}]},
+    whileEnd:  {group:'Control de flujo', label:'⏹️ Fin de Repetir mientras', color:'#f77c9a', fields:[]},
+    forEachBegin:{group:'Control de flujo', label:'📋 Para cada elemento de array (inicio)', color:'#f77c9a', fields:[{key:'arrayName',label:'Nombre del array',default:'lista'},{key:'itemVar',label:'Variable de cada elemento',default:'item'}]},
+    forEachEnd:  {group:'Control de flujo', label:'⏹️ Fin de Para cada', color:'#f77c9a', fields:[]},
+    breakLoop:{group:'Control de flujo', label:'🛑 Detener bucle (break)', color:'#f77c9a', fields:[]},
+    continueLoop:{group:'Control de flujo', label:'⏭️ Continuar (continue)', color:'#f77c9a', fields:[]},
+
+    // ---- Arrays ----
+    arrayCreate:{group:'Arrays', label:'📦 Crear array', color:'#9a6bff', fields:[{key:'name',label:'Nombre',default:'lista'}]},
+    arrayPush:  {group:'Arrays', label:'➕ Añadir elemento al array', color:'#9a6bff', fields:[{key:'name',label:'Nombre',default:'lista'},{key:'value',label:'Valor a añadir',default:''}]},
+    arrayRemoveAt:{group:'Arrays', label:'➖ Eliminar elemento por índice', color:'#9a6bff', fields:[{key:'name',label:'Nombre',default:'lista'},{key:'index',label:'Índice',default:'0'}]},
+    arraySet:   {group:'Arrays', label:'✏️ Modificar elemento por índice', color:'#9a6bff', fields:[{key:'name',label:'Nombre',default:'lista'},{key:'index',label:'Índice',default:'0'},{key:'value',label:'Nuevo valor',default:''}]},
+    arrayClear: {group:'Arrays', label:'🧹 Vaciar array', color:'#9a6bff', fields:[{key:'name',label:'Nombre',default:'lista'}]},
+    arrayLength:{group:'Arrays', label:'📏 Guardar longitud del array', color:'#9a6bff', fields:[{key:'name',label:'Nombre del array',default:'lista'},{key:'saveTo',label:'Guardar en variable',default:'longitud'}]},
+    arraySort:  {group:'Arrays', label:'🔀 Ordenar array', color:'#9a6bff', fields:[{key:'name',label:'Nombre',default:'lista'}]},
+
+    // ---- Objetos ----
+    objCreate:{group:'Objetos', label:'🗂️ Crear objeto', color:'#e678c0', fields:[{key:'name',label:'Nombre',default:'jugador'}]},
+    objSet:   {group:'Objetos', label:'✏️ Cambiar propiedad', color:'#e678c0', fields:[{key:'name',label:'Nombre del objeto',default:'jugador'},{key:'key',label:'Propiedad',default:'vida'},{key:'value',label:'Valor',default:'100'}]},
+    objDelete:{group:'Objetos', label:'🗑️ Eliminar propiedad', color:'#e678c0', fields:[{key:'name',label:'Nombre del objeto',default:'jugador'},{key:'key',label:'Propiedad',default:'vida'}]},
+
+    // ---- Temporización ----
+    timerStart:{group:'Temporización', label:'⏲️ Repetir cada X segundos (intervalo)', color:'#8892a6', fields:[{key:'seconds',label:'Segundos',default:'1'},{key:'action',label:'Código a ejecutar',default:"console.log('tick');"}]},
+
+    // ---- JSON / Storage ----
+    storageSave:{group:'Guardado (Storage)', label:'💾 Guardar dato', color:'#5ecb8a', fields:[{key:'key',label:'Clave',default:'miDato'},{key:'value',label:'Valor (variable o expresión)',default:''}]},
+    storageLoad:{group:'Guardado (Storage)', label:'📂 Cargar dato', color:'#5ecb8a', fields:[{key:'key',label:'Clave',default:'miDato'},{key:'varName',label:'Guardar en variable',default:'miDato'}]},
+    storageRemove:{group:'Guardado (Storage)', label:'🗑️ Eliminar dato guardado', color:'#5ecb8a', fields:[{key:'key',label:'Clave',default:'miDato'}]},
+
+    // ---- HTTP ----
+    httpGet:{group:'Internet (HTTP)', label:'🌐 Pedir datos JSON a una URL (GET)', color:'#4fa3ff', fields:[{key:'url',label:'URL',default:'https://'},{key:'varName',label:'Guardar respuesta en variable',default:'respuesta'}]},
+
+    // ---- Canvas 2D ----
+    canvasClear:{group:'Canvas 2D', label:'🧹 Limpiar canvas', color:'#ff8a3d', fields:[{key:'domId',label:'ID del canvas',default:''}]},
+    canvasBg:   {group:'Canvas 2D', label:'🖼️ Rellenar canvas con un color', color:'#ff8a3d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'color',label:'Color',default:'#ffffff'}]},
+    canvasRect: {group:'Canvas 2D', label:'▭ Dibujar rectángulo', color:'#ff8a3d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'x',label:'X',default:'10'},{key:'y',label:'Y',default:'10'},{key:'w',label:'Ancho',default:'50'},{key:'h',label:'Alto',default:'50'},{key:'color',label:'Color',default:'#5b6ef5'}]},
+    canvasCircle:{group:'Canvas 2D', label:'⚪ Dibujar círculo', color:'#ff8a3d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'x',label:'X centro',default:'50'},{key:'y',label:'Y centro',default:'50'},{key:'radius',label:'Radio',default:'20'},{key:'color',label:'Color',default:'#5ee6c3'}]},
+    canvasLine: {group:'Canvas 2D', label:'📏 Dibujar línea', color:'#ff8a3d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'x1',label:'X inicio',default:'0'},{key:'y1',label:'Y inicio',default:'0'},{key:'x2',label:'X fin',default:'50'},{key:'y2',label:'Y fin',default:'50'},{key:'color',label:'Color',default:'#000000'},{key:'width',label:'Grosor',default:'2'}]},
+    canvasText: {group:'Canvas 2D', label:'🔤 Dibujar texto', color:'#ff8a3d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'x',label:'X',default:'10'},{key:'y',label:'Y',default:'20'},{key:'text',label:'Texto',default:'Hola'},{key:'color',label:'Color',default:'#000000'},{key:'size',label:'Tamaño (px)',default:'16'}]},
+    canvasImage:{group:'Canvas 2D', label:'🖼️ Dibujar imagen', color:'#ff8a3d', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'url',label:'URL de la imagen',default:'https://'},{key:'x',label:'X',default:'0'},{key:'y',label:'Y',default:'0'},{key:'w',label:'Ancho',default:'100'},{key:'h',label:'Alto',default:'100'}]},
+
+    // ---- Input: teclado / mouse ----
+    onKeyDown: {group:'Teclado y mouse', label:'⌨️ Al presionar una tecla', color:'#6bd47a', fields:[{key:'key',label:'Tecla (ej: ArrowUp, a, Enter, cualquiera=*)',default:'*'},{key:'action',label:'Código a ejecutar',default:"console.log('tecla presionada');"}]},
+    onKeyUp:   {group:'Teclado y mouse', label:'⌨️ Al soltar una tecla', color:'#6bd47a', fields:[{key:'key',label:'Tecla (ej: ArrowUp, a, Enter, cualquiera=*)',default:'*'},{key:'action',label:'Código a ejecutar',default:"console.log('tecla soltada');"}]},
+    onMouseClick:{group:'Teclado y mouse', label:'🖱️ Al hacer clic en el canvas', color:'#6bd47a', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'action',label:'Código a ejecutar (usa vars.mouseX / vars.mouseY)',default:"console.log(vars.mouseX, vars.mouseY);"}]},
+    onMouseMove: {group:'Teclado y mouse', label:'🖱️ Al mover el mouse sobre el canvas', color:'#6bd47a', fields:[{key:'domId',label:'ID del canvas',default:''},{key:'action',label:'Código a ejecutar (usa vars.mouseX / vars.mouseY)',default:''}]},
   };
 
   const jsBlockListEl = document.getElementById('jsBlockList');
   const addBlockSelect = document.getElementById('addBlockSelect');
-  Object.keys(BLOCK_DEFS).forEach(type=>{
-    const opt = document.createElement('option');
-    opt.value = type; opt.textContent = BLOCK_DEFS[type].label;
-    addBlockSelect.appendChild(opt);
-  });
+  {
+    const groups = {};
+    Object.keys(BLOCK_DEFS).forEach(type=>{
+      const g = BLOCK_DEFS[type].group || 'General';
+      (groups[g] = groups[g]||[]).push(type);
+    });
+    Object.keys(groups).forEach(g=>{
+      const og = document.createElement('optgroup');
+      og.label = g;
+      groups[g].forEach(type=>{
+        const opt = document.createElement('option');
+        opt.value = type; opt.textContent = BLOCK_DEFS[type].label;
+        og.appendChild(opt);
+      });
+      addBlockSelect.appendChild(og);
+    });
+  }
   document.getElementById('addBlockBtn').addEventListener('click', ()=>{
     const type = addBlockSelect.value;
     const def = BLOCK_DEFS[type];
@@ -1426,6 +1514,8 @@
         return `<a href="${escapeHtml(el.href||'#')}"${idAttr}${cls}${clickAttr}>${escapeHtml(el.text)}</a>`;
       case 'checkbox':
         return `<label${idAttr}${cls} style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox">${escapeHtml(el.text)}</label>`;
+      case 'canvas':
+        return `<canvas${idAttr}${cls} width="${el.w}" height="${el.h}"></canvas>`;
       default:
         return '';
     }
@@ -1471,30 +1561,125 @@ body { margin:0; font-family: 'Inter', -apple-system, Segoe UI, sans-serif; back
 
   /* Turns the "Al cargar la página" blocks into real JS. Blocks after a "wait" block
      run inside the same async sequence so they execute in the order shown. */
+  // identifier-safe variable name
+  function vid(name){ return 'vars.' + String(name||'x').trim().replace(/[^a-zA-Z0-9_$]/g,'_').replace(/^(\d)/,'_$1'); }
+
   function blockToJsLine(block){
     const p = block.params;
     const esc = s => (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
     switch(block.type){
-      case 'alert': return `  alert('${esc(p.message)}');`;
-      case 'log': return `  console.log('${esc(p.message)}');`;
-      case 'redirect': return `  window.location.href = '${esc(p.url)}';`;
-      case 'wait': return `  await esperar(${parseFloat(p.seconds)||0});`;
-      case 'setText': return `  { const el = document.getElementById('${esc(p.domId)}'); if(el) el.textContent = '${esc(p.text)}'; }`;
-      case 'setBg': return `  { const el = document.getElementById('${esc(p.domId)}'); if(el) el.style.background = '${esc(p.color)}'; }`;
-      case 'toggleVis': return `  { const el = document.getElementById('${esc(p.domId)}'); if(el) el.style.display = (el.style.display==='none' ? '' : 'none'); }`;
+      // básicas
+      case 'alert': return `alert('${esc(p.message)}');`;
+      case 'log': return `console.log('${esc(p.message)}');`;
+      case 'redirect': return `window.location.href = '${esc(p.url)}';`;
+      case 'wait': return `await esperar(${parseFloat(p.seconds)||0});`;
+      case 'setText': return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.textContent = '${esc(p.text)}'; }`;
+      case 'setBg': return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.style.background = '${esc(p.color)}'; }`;
+      case 'toggleVis': return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.style.display = (el.style.display==='none' ? '' : 'none'); }`;
+
+      // variables
+      case 'varCreate': return `${vid(p.name)} = (${p.value});`;
+      case 'varSet':    return `${vid(p.name)} = (${p.value});`;
+      case 'varInc':    return `${vid(p.name)} = (${vid(p.name)}||0) + (${p.amount||1});`;
+      case 'varDec':    return `${vid(p.name)} = (${vid(p.name)}||0) - (${p.amount||1});`;
+      case 'varSwap':   return `{ const _t = ${vid(p.nameA)}; ${vid(p.nameA)} = ${vid(p.nameB)}; ${vid(p.nameB)} = _t; }`;
+      case 'varShowIn': return `{ const el = document.getElementById('${esc(p.domId)}'); if(el) el.textContent = ${vid(p.name)}; }`;
+
+      // matemáticas
+      case 'mathSet':   return `${vid(p.name)} = (${p.a}) ${p.op||'+'} (${p.b});`;
+      case 'mathRound': {
+        const fn = {round:'Math.round',floor:'Math.floor',ceil:'Math.ceil',abs:'Math.abs'}[p.mode] || 'Math.round';
+        return `${vid(p.name)} = ${fn}(${p.value});`;
+      }
+      case 'mathRandom': return `${vid(p.name)} = Math.floor(Math.random() * ((${p.max}) - (${p.min}) + 1)) + (${p.min});`;
+      case 'mathClamp':  return `${vid(p.name)} = Math.min(Math.max(${p.value}, ${p.min}), ${p.max});`;
+      case 'mathTrig':   return `${vid(p.name)} = Math.${p.fn||'sin'}(${p.value});`;
+
+      // control de flujo
+      case 'ifBegin':    return `if ((${p.a}) ${p.op||'=='} (${p.b})) {`;
+      case 'elseBegin':  return `} else {`;
+      case 'ifEnd':      return `}`;
+      case 'repeatBegin':return `for (let i = 0; i < (${p.times}); i++) {`;
+      case 'repeatEnd':  return `}`;
+      case 'whileBegin': return `while ((${p.a}) ${p.op||'<'} (${p.b})) {`;
+      case 'whileEnd':   return `}`;
+      case 'forEachBegin':return `for (const ${(p.itemVar||'item').replace(/[^a-zA-Z0-9_$]/g,'_')} of (${vid(p.arrayName)}||[])) {`;
+      case 'forEachEnd': return `}`;
+      case 'breakLoop':  return `break;`;
+      case 'continueLoop': return `continue;`;
+
+      // arrays
+      case 'arrayCreate':return `${vid(p.name)} = [];`;
+      case 'arrayPush':  return `(${vid(p.name)} || (${vid(p.name)} = [])).push(${p.value});`;
+      case 'arrayRemoveAt':return `if(${vid(p.name)}) ${vid(p.name)}.splice(${p.index}, 1);`;
+      case 'arraySet':   return `if(${vid(p.name)}) ${vid(p.name)}[${p.index}] = (${p.value});`;
+      case 'arrayClear': return `if(${vid(p.name)}) ${vid(p.name)}.length = 0;`;
+      case 'arrayLength':return `${vid(p.saveTo)} = (${vid(p.name)}||[]).length;`;
+      case 'arraySort':  return `if(${vid(p.name)}) ${vid(p.name)}.sort();`;
+
+      // objetos
+      case 'objCreate':  return `${vid(p.name)} = {};`;
+      case 'objSet':      return `(${vid(p.name)} || (${vid(p.name)} = {}))['${esc(p.key)}'] = (${p.value});`;
+      case 'objDelete':  return `if(${vid(p.name)}) delete ${vid(p.name)}['${esc(p.key)}'];`;
+
+      // temporización
+      case 'timerStart': return `setInterval(() => { ${p.action||''} }, ${(parseFloat(p.seconds)||1) * 1000});`;
+
+      // storage
+      case 'storageSave': return `localStorage.setItem('${esc(p.key)}', JSON.stringify(${p.value}));`;
+      case 'storageLoad': return `${vid(p.varName)} = JSON.parse(localStorage.getItem('${esc(p.key)}'));`;
+      case 'storageRemove': return `localStorage.removeItem('${esc(p.key)}');`;
+
+      // http
+      case 'httpGet': return `${vid(p.varName)} = await fetch('${esc(p.url)}').then(r => r.json()).catch(e => { console.error(e); return null; });`;
+
+      // canvas 2d
+      case 'canvasClear': return `{ const c = document.getElementById('${esc(p.domId)}'); if(c) c.getContext('2d').clearRect(0,0,c.width,c.height); }`;
+      case 'canvasBg':    return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ const ctx=c.getContext('2d'); ctx.fillStyle='${esc(p.color)}'; ctx.fillRect(0,0,c.width,c.height); } }`;
+      case 'canvasRect':  return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ const ctx=c.getContext('2d'); ctx.fillStyle='${esc(p.color)}'; ctx.fillRect(${p.x}, ${p.y}, ${p.w}, ${p.h}); } }`;
+      case 'canvasCircle':return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ const ctx=c.getContext('2d'); ctx.fillStyle='${esc(p.color)}'; ctx.beginPath(); ctx.arc(${p.x}, ${p.y}, ${p.radius}, 0, Math.PI*2); ctx.fill(); } }`;
+      case 'canvasLine':  return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ const ctx=c.getContext('2d'); ctx.strokeStyle='${esc(p.color)}'; ctx.lineWidth=${p.width||2}; ctx.beginPath(); ctx.moveTo(${p.x1}, ${p.y1}); ctx.lineTo(${p.x2}, ${p.y2}); ctx.stroke(); } }`;
+      case 'canvasText':  return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ const ctx=c.getContext('2d'); ctx.fillStyle='${esc(p.color)}'; ctx.font='${p.size||16}px sans-serif'; ctx.fillText('${esc(p.text)}', ${p.x}, ${p.y}); } }`;
+      case 'canvasImage': return `{ const c = document.getElementById('${esc(p.domId)}'); if(c){ const ctx=c.getContext('2d'); const img=new Image(); img.onload=()=>ctx.drawImage(img, ${p.x}, ${p.y}, ${p.w}, ${p.h}); img.src='${esc(p.url)}'; } }`;
+
+      // teclado / mouse
+      case 'onKeyDown': return `document.addEventListener('keydown', function(e){ ${(!p.key||p.key==='*') ? '' : `if(e.key !== '${esc(p.key)}') return; `}${p.action||''} });`;
+      case 'onKeyUp':   return `document.addEventListener('keyup', function(e){ ${(!p.key||p.key==='*') ? '' : `if(e.key !== '${esc(p.key)}') return; `}${p.action||''} });`;
+      case 'onMouseClick': return `{ const c = document.getElementById('${esc(p.domId)}'); if(c) c.addEventListener('click', function(e){ const r=c.getBoundingClientRect(); vars.mouseX = e.clientX-r.left; vars.mouseY = e.clientY-r.top; ${p.action||''} }); }`;
+      case 'onMouseMove':  return `{ const c = document.getElementById('${esc(p.domId)}'); if(c) c.addEventListener('mousemove', function(e){ const r=c.getBoundingClientRect(); vars.mouseX = e.clientX-r.left; vars.mouseY = e.clientY-r.top; ${p.action||''} }); }`;
+
       default: return '';
     }
   }
+
+  const BLOCK_OPEN = ['ifBegin','repeatBegin','whileBegin','forEachBegin'];
+  const BLOCK_CLOSE = ['ifEnd','repeatEnd','whileEnd','forEachEnd'];
+  const BLOCK_ASYNC = ['wait','httpGet'];
+
   function generateJS(){
-    const needsWait = jsBlocks.some(b=>b.type==='wait');
-    let body = jsBlocks.map(blockToJsLine).filter(Boolean).join('\n');
+    const needsAsync = jsBlocks.some(b=>BLOCK_ASYNC.includes(b.type));
+    let indent = 1;
+    const lines = [];
+    jsBlocks.forEach(block=>{
+      const raw = blockToJsLine(block);
+      if(!raw) return;
+      if(BLOCK_CLOSE.includes(block.type) || block.type==='elseBegin'){
+        indent = Math.max(1, indent - 1);
+      }
+      lines.push('  '.repeat(indent) + raw);
+      if(BLOCK_OPEN.includes(block.type) || block.type==='elseBegin'){
+        indent++;
+      }
+    });
+    const body = lines.join('\n');
     let out = `// Código generado por SimpleCode a partir de tus bloques
 `;
-    if(needsWait){
+    if(needsAsync){
       out += `function esperar(segundos){ return new Promise(r => setTimeout(r, segundos*1000)); }
 `;
     }
-    out += `document.addEventListener('DOMContentLoaded', ${needsWait ? 'async ' : ''}function(){
+    out += `const vars = {}; // aquí viven todas tus variables, arrays y objetos (vars.nombre)
+document.addEventListener('DOMContentLoaded', ${needsAsync ? 'async ' : ''}function(){
   console.log('Proyecto "${(document.getElementById('projectNameInput').value||'MiProyecto').replace(/"/g,'')}" cargado ✔');
 ${body}
 });
