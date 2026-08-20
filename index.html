@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>Web Studio</title>
+<title>Web Page Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
   --bg0:#181818; --bg1:#202020; --bg2:#262626; --bg3:#2e2e2e; --line:#3a3a3a;
@@ -153,6 +154,8 @@ h4{margin:10px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.04e
       <button id="btnNew" title="New Project">🆕</button>
       <button id="btnSave" title="Save">💾</button>
       <button id="btnLoad" title="Load">📂</button>
+      <button id="btnImportZip" title="Importar .zip, uno o varios archivos (.html/.css/.js), o un .html con todo embebido">📦 Importar</button>
+      <input type="file" id="zipInput" accept=".zip,.html,.htm,.css,.js" multiple style="display:none">
     </div>
     <div class="sep"></div>
     <input id="projName" value="Untitled Project" title="Project name">
@@ -212,6 +215,12 @@ h4{margin:10px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.04e
         <div class="asset-item"><span>Scripts</span><span id="statScCount" class="badge">0</span></div>
         <h4>Saved Projects</h4>
         <div id="savedList"></div>
+        <h4>Importado desde ZIP (avanzado)</h4>
+        <div class="mini" style="margin-bottom:4px;">Reglas con :hover/:focus, @media, @keyframes y JS que no se puede convertir a bloques se preservan aquí tal cual (se exportan igual).</div>
+        <div class="mini" style="margin:6px 0 2px;">CSS extra</div>
+        <textarea id="extraCssBox" style="width:100%;min-height:70px;font-family:monospace;font-size:11px;"></textarea>
+        <div class="mini" style="margin:6px 0 2px;">JavaScript importado</div>
+        <textarea id="rawJsBox" style="width:100%;min-height:90px;font-family:monospace;font-size:11px;"></textarea>
       </div>
     </div>
 
@@ -286,7 +295,11 @@ function defaultProject(){
            attrs:{}, classes:[], text:"" }
     },
     variables: [],
-    scripts: []
+    scripts: [],
+    extraCss: "",   // verbatim CSS (media queries, :hover, @keyframes...) preserved from imports
+    rawScript: "",  // verbatim JS preserved from imports that couldn't be decomposed into blocks
+    externalCssUrls: [], // <link> URLs (e.g. CDN Bootstrap) kept as real tags, not fetched
+    externalJsUrls: []   // <script src> URLs (e.g. CDN AngularJS) kept as real tags, not fetched
   };
 }
 
@@ -305,6 +318,10 @@ function newBlockId(){ return "b"+Math.random().toString(36).slice(2,9); }
 /* elements that cannot have children (leaf UI controls) */
 var LEAF_TAGS = ["text","heading","button","image","input","textarea","link","video","canvas","icon"];
 var VOID_TAGS = ["image","input"];
+var VOID_HTML_TAGS = ["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"];
+var BOOL_ATTRS = ["controls","disabled","checked","readonly","required","autoplay","loop","muted","selected","multiple","autofocus"];
+function actualTagName(e){ return (e.rawTag || tagHtml(e.tag)).toLowerCase(); }
+function isVoidEl(e){ return VOID_HTML_TAGS.indexOf(actualTagName(e))!==-1; }
 
 function tagHtml(t){
   switch(t){
@@ -337,7 +354,7 @@ function newElementDefaults(tag){
     case "input": e.attrs={type:"text",placeholder:"Type here...",value:""}; e.style={"padding":"8px","border":"1px solid #ccc","border-radius":"4px"}; break;
     case "textarea": e.attrs={placeholder:"Type here..."}; e.text=""; e.style={"padding":"8px","border":"1px solid #ccc","border-radius":"4px","width":"260px","height":"80px"}; break;
     case "link": e.text="Link"; e.attrs={href:"#"}; e.style={"color":"#3a8fd9"}; break;
-    case "video": e.attrs={src:"",controls:"true"}; e.style={"width":"320px"}; break;
+    case "video": e.attrs={src:"",controls:true}; e.style={"width":"320px"}; break;
     case "canvas": e.attrs={width:"300",height:"150"}; e.style={"background-color":"#eeeeee"}; break;
     case "icon": e.text="★"; e.style={"font-size":"18px"}; break;
   }
@@ -425,20 +442,30 @@ function jsStr(s){ return JSON.stringify(String(s==null?"":s)); }
 
 function renderElementHtml(id){
   var e = state.project.elements[id];
-  var tag = tagHtml(e.tag);
+  var tag = actualTagName(e);
   var cls = (e.classes||[]).join(" ");
   var attrParts = ['id="el_'+e.id+'"'];
   if(cls) attrParts.push('class="'+esc(cls)+'"');
   var a = e.attrs||{};
-  if(e.tag==="image"){ attrParts.push('src="'+esc(a.src||"")+'"'); attrParts.push('alt="'+esc(a.alt||"")+'"'); }
-  if(e.tag==="input"){ attrParts.push('type="'+esc(a.type||"text")+'"'); if(a.placeholder) attrParts.push('placeholder="'+esc(a.placeholder)+'"'); attrParts.push('value="'+esc(a.value||"")+'"'); }
-  if(e.tag==="textarea"){ if(a.placeholder) attrParts.push('placeholder="'+esc(a.placeholder)+'"'); }
-  if(e.tag==="link"){ attrParts.push('href="'+esc(a.href||"#")+'"'); if(a.target) attrParts.push('target="'+esc(a.target)+'"'); }
-  if(e.tag==="video"){ if(a.src) attrParts.push('src="'+esc(a.src)+'"'); attrParts.push("controls"); }
-  if(e.tag==="canvas"){ attrParts.push('width="'+esc(a.width||"300")+'"'); attrParts.push('height="'+esc(a.height||"150")+'"'); }
+
+  /* sensible fallbacks for elements created from scratch (imports already carry real attrs) */
+  if(e.tag==="image" && a.src===undefined) a = Object.assign({src:"",alt:""}, a);
+  if(e.tag==="input" && a.type===undefined) a = Object.assign({type:"text"}, a);
+  if(e.tag==="link" && a.href===undefined) a = Object.assign({href:"#"}, a);
+
+  Object.keys(a).forEach(function(k){
+    if(k==="class"||k==="id"||k==="style") return;
+    var v = a[k];
+    if(v===undefined || v===null || v===false) return;
+    if(BOOL_ATTRS.indexOf(k)!==-1){
+      if(v===true || v==="true" || v===k || v==="") attrParts.push(esc(k));
+      return;
+    }
+    attrParts.push(k+'="'+esc(v)+'"');
+  });
   var attrStr = attrParts.join(" ");
 
-  if(VOID_TAGS.indexOf(e.tag)!==-1){
+  if(isVoidEl(e)){
     return "<"+tag+" "+attrStr+" />";
   }
   var inner = "";
@@ -727,8 +754,18 @@ function genDocument(mode){
   var css = renderCss();
   var bodyInner = (state.project.elements[state.project.rootId].children||[]).map(renderElementHtml).join("");
   var rootCls = (state.project.elements[state.project.rootId].classes||[]).join(" ");
-  var styleBlock = css + (mode==="edit" ? "\n"+BRIDGE_CSS : "");
-  var scriptBlock = mode==="edit" ? BRIDGE_JS : compileScripts();
+  var extraCss = state.project.extraCss || "";
+  var rawScript = state.project.rawScript || "";
+  var externalCssUrls = state.project.externalCssUrls || [];
+  var externalJsUrls = state.project.externalJsUrls || [];
+  var styleBlock = css + (extraCss ? "\n/* --- Imported CSS (media/hover/keyframes...) --- */\n"+extraCss : "") + (mode==="edit" ? "\n"+BRIDGE_CSS : "");
+  var scriptBlock = mode==="edit" ? BRIDGE_JS : (compileScripts() + (rawScript ? "\n\n/* --- Imported JavaScript --- */\n"+rawScript : ""));
+  var extCssLinkTags = externalCssUrls.map(function(u){ return '<link rel="stylesheet" href="'+esc(u)+'">'; }).join("\n");
+  // External <script src> tags for things like AngularJS/jQuery/Bootstrap JS from a CDN.
+  // These MUST come before our own inline <script> block below (parser-blocking scripts
+  // execute in document order), so libraries like Angular are ready before rawScript/
+  // compileScripts() run and before Angular auto-bootstraps by scanning for ng-app.
+  var extJsScriptTags = externalJsUrls.map(function(u){ return '<script src="'+esc(u)+'">'+'<'+'/script>'; }).join("\n");
   var html = [];
   html.push("<!DOCTYPE html>");
   html.push('<html lang="en">');
@@ -736,9 +773,11 @@ function genDocument(mode){
   html.push('<meta charset="UTF-8">');
   html.push('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
   html.push("<title>"+esc(state.project.name)+"</title>");
+  if(extCssLinkTags) html.push(extCssLinkTags);
   html.push("<style>\n"+styleBlock+"\n</style>");
   html.push("</head>");
   html.push('<body id="el_'+state.project.rootId+'"'+(rootCls?' class="'+esc(rootCls)+'"':"")+">"+bodyInner+"</body>");
+  if(extJsScriptTags) html.push(extJsScriptTags);
   html.push("<"+"script>\n"+scriptBlock+"\n<"+"/script>");
   html.push("</html>");
   return html.join("\n");
@@ -1085,6 +1124,14 @@ function renderVars(){
     row.appendChild(nameInput); row.appendChild(typeSel); row.appendChild(initInput); row.appendChild(rm);
     box.appendChild(row);
   });
+}
+function renderImportedAssets(){
+  var cssBox = document.getElementById("extraCssBox");
+  var jsBox = document.getElementById("rawJsBox");
+  cssBox.value = state.project.extraCss || "";
+  jsBox.value = state.project.rawScript || "";
+  cssBox.onchange = function(){ pushHistory(); state.project.extraCss = cssBox.value; updateViewport(); };
+  jsBox.onchange = function(){ pushHistory(); state.project.rawScript = jsBox.value; updateViewport(); };
 }
 document.getElementById("btnAddVar").addEventListener("click", function(){
   pushHistory();
@@ -1523,6 +1570,309 @@ document.addEventListener("keydown", function(e){
 });
 
 /* =========================================================
+   ZIP IMPORTER (HTML/CSS/JS project -> Web Page Studio project)
+========================================================= */
+var IMPORT_LEAF_MAP = {
+  p:"text", h1:"heading", h2:"heading", h3:"heading", h4:"heading", h5:"heading", h6:"heading",
+  button:"button", img:"image", input:"input", textarea:"textarea", a:"link", video:"video", canvas:"canvas",
+  span:"icon", em:"icon", strong:"icon", small:"icon", label:"icon", i:"icon", b:"icon"
+};
+function mapImportedTag(tagName, hasElementChild){
+  if(tagName==="img" || tagName==="input") return IMPORT_LEAF_MAP[tagName];
+  if(IMPORT_LEAF_MAP[tagName] && !hasElementChild) return IMPORT_LEAF_MAP[tagName];
+  return "container";
+}
+var DYNAMIC_PSEUDO_RE = /:(hover|focus|active|visited|focus-within|focus-visible|target)\b/i;
+function collectStyles(doc, extraOut){
+  var map = new Map();
+  function addDecls(el, cssText){
+    var arr = map.get(el); if(!arr){ arr=[]; map.set(el, arr); }
+    (cssText||"").split(";").forEach(function(pair){
+      var idx = pair.indexOf(":");
+      if(idx<0) return;
+      var prop = pair.slice(0,idx).trim(), val = pair.slice(idx+1).trim();
+      if(prop && val) arr.push([prop,val]);
+    });
+  }
+  function walk(rules){
+    for(var j=0;j<rules.length;j++){
+      var rule = rules[j];
+      if(rule.type===1 /* STYLE_RULE */){
+        var sel = rule.selectorText || "";
+        if(!sel || sel.indexOf("::")!==-1 || DYNAMIC_PSEUDO_RE.test(sel)){ extraOut.push(rule.cssText); continue; }
+        var matched;
+        try{ matched = doc.querySelectorAll(sel); }catch(err){ extraOut.push(rule.cssText); continue; }
+        matched.forEach(function(el){ addDecls(el, rule.style.cssText); });
+      } else if(rule.cssRules){ /* @media, @supports, etc. */
+        extraOut.push(rule.cssText);
+      } else if(rule.type===5 /* KEYFRAMES */ || rule.type===7 /* FONT_FACE */){
+        extraOut.push(rule.cssText);
+      }
+    }
+  }
+  var sheets = doc.styleSheets;
+  for(var i=0;i<sheets.length;i++){
+    var rules; try{ rules = sheets[i].cssRules; }catch(err){ continue; }
+    if(rules) walk(rules);
+  }
+  return map;
+}
+function domToElement(domEl, matchMap){
+  var tagName = domEl.tagName.toLowerCase();
+  var hasElementChild = Array.prototype.some.call(domEl.childNodes, function(n){ return n.nodeType===1; });
+  var tag = mapImportedTag(tagName, hasElementChild);
+  var e = { tag:tag, rawTag:tagName, children:[], style:{}, attrs:{}, classes:[], text:"" };
+  e.classes = Array.prototype.slice.call(domEl.classList||[]);
+  e.name = domEl.id || (tagName + (e.classes[0] ? "."+e.classes[0] : ""));
+  Array.prototype.forEach.call(domEl.attributes, function(attr){
+    if(["class","style","id"].indexOf(attr.name)!==-1) return;
+    e.attrs[attr.name] = attr.value;
+  });
+  var inline = [];
+  if(domEl.getAttribute("style")){
+    for(var i=0;i<domEl.style.length;i++){ var p=domEl.style.item(i); inline.push([p, domEl.style.getPropertyValue(p)]); }
+  }
+  (matchMap.get(domEl)||[]).concat(inline).forEach(function(pair){ e.style[pair[0]] = pair[1]; });
+  if(!hasElementChild){ e.text = (domEl.textContent||"").trim(); }
+  return e;
+}
+function importSubtree(domEl, parentId, project, matchMap){
+  var e = domToElement(domEl, matchMap);
+  var id = project.nextId++;
+  e.id = id; e.parent = parentId;
+  project.elements[id] = e;
+  project.elements[parentId].children.push(id);
+  if(e.tag==="container"){
+    Array.prototype.forEach.call(domEl.children, function(childEl){ importSubtree(childEl, id, project, matchMap); });
+  }
+  return id;
+}
+function resolveZipPath(baseDir, href){
+  if(/^https?:\/\//i.test(href) || href.indexOf("//")===0 || href.indexOf("data:")===0) return null;
+  var parts = (baseDir + href).split("/"), stack = [];
+  parts.forEach(function(seg){
+    if(seg==="" || seg===".") return;
+    if(seg===".."){ stack.pop(); } else stack.push(seg);
+  });
+  return stack.join("/");
+}
+/* Core: given raw html + combined css + combined js, build a Studio project using
+   a hidden iframe so the browser's real CSS engine resolves selector matches. */
+async function buildProjectFromParts(htmlText, allCss, allJs, projectName, externalCssUrls, externalJsUrls){
+  externalCssUrls = externalCssUrls || [];
+  externalJsUrls = externalJsUrls || [];
+  var srcDoc = new DOMParser().parseFromString(htmlText, "text/html");
+  var workFrame = document.createElement("iframe");
+  workFrame.style.cssText = "position:fixed;left:-9999px;top:0;width:1200px;height:900px;visibility:hidden;";
+  document.body.appendChild(workFrame);
+  try{
+    var bodyHtml = srcDoc.body ? srcDoc.body.outerHTML : ("<body>"+(srcDoc.documentElement?srcDoc.documentElement.innerHTML:"")+"</body>");
+    var extCssLinkTags = externalCssUrls.map(function(u){ return '<link rel="stylesheet" href="'+u+'">'; }).join("\n");
+    var doneLoading = new Promise(function(resolve){ workFrame.addEventListener("load", resolve, {once:true}); });
+    // Include the real external <link> tags here too, so the browser's CSS engine
+    // (used below to compute matched styles per element) sees Bootstrap's real rules.
+    workFrame.srcdoc = "<!DOCTYPE html><html><head>"+extCssLinkTags+"<style>"+allCss+"</style></head>"+bodyHtml+"</html>";
+    await doneLoading;
+    var wdoc = workFrame.contentDocument;
+
+    var extraCssChunks = [];
+    var matchMap = collectStyles(wdoc, extraCssChunks);
+
+    var newProject = {
+      name: projectName || "Proyecto importado",
+      nextId: 1, rootId: 0, elements: {}, variables: [], scripts: [],
+      extraCss: extraCssChunks.join("\n\n"), rawScript: allJs,
+      externalCssUrls: externalCssUrls, externalJsUrls: externalJsUrls
+    };
+    var rootEl = { id:0, tag:"container", name:"Root", parent:null, children:[], style:{}, attrs:{}, classes:[], text:"" };
+    newProject.elements[0] = rootEl;
+
+    var rootInline = [];
+    if(wdoc.body.getAttribute("style")){
+      for(var k=0;k<wdoc.body.style.length;k++){ var pn=wdoc.body.style.item(k); rootInline.push([pn, wdoc.body.style.getPropertyValue(pn)]); }
+    }
+    (matchMap.get(wdoc.body)||[]).concat(rootInline).forEach(function(pair){ rootEl.style[pair[0]] = pair[1]; });
+    rootEl.classes = Array.prototype.slice.call(wdoc.body.classList||[]);
+
+    Array.prototype.forEach.call(wdoc.body.children, function(childEl){ importSubtree(childEl, 0, newProject, matchMap); });
+    return newProject;
+  } finally {
+    if(workFrame.parentNode) workFrame.parentNode.removeChild(workFrame);
+  }
+}
+
+/* Confirms with the user and swaps in the imported project */
+function applyImportedProject(newProject, sourceLabel){
+  var count = Object.keys(newProject.elements).length;
+  if(!confirm("Se importaron "+count+" elementos desde '"+sourceLabel+"'.\n¿Reemplazar el proyecto actual? Se perderá lo no guardado.")){
+    setStatus("Importación cancelada.");
+    return false;
+  }
+  state.project = newProject;
+  state.selectedId = 0;
+  state.history = []; state.future = [];
+  document.getElementById("projName").value = state.project.name;
+  renderAll();
+  setStatus("Proyecto importado. Revisa la pestaña Assets para el CSS/JS que no se pudo convertir a bloques.");
+  return true;
+}
+
+function readFileAsText(file){
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(){ resolve(r.result); };
+    r.onerror = function(){ reject(new Error("No se pudo leer "+file.name)); };
+    r.readAsText(file);
+  });
+}
+
+/* ---- Path A: a .zip archive ---- */
+async function handleZipFile(file){
+  try{
+    if(typeof JSZip === "undefined"){ alert("No se pudo cargar la librería ZIP (revisa tu conexión a internet) — reintenta."); return; }
+    setStatus("Leyendo ZIP...");
+    var zip = await JSZip.loadAsync(file);
+    var htmlPath = null;
+    zip.forEach(function(relPath){ if(!htmlPath && /(^|\/)index\.html?$/i.test(relPath)) htmlPath = relPath; });
+    if(!htmlPath) zip.forEach(function(relPath){ if(!htmlPath && /\.html?$/i.test(relPath)) htmlPath = relPath; });
+    if(!htmlPath){ alert("No se encontró ningún archivo .html dentro del ZIP."); setStatus("Ready."); return; }
+
+    var htmlText = await zip.file(htmlPath).async("string");
+    var baseDir = htmlPath.indexOf("/")!==-1 ? htmlPath.slice(0, htmlPath.lastIndexOf("/")+1) : "";
+    var srcDoc = new DOMParser().parseFromString(htmlText, "text/html");
+
+    function isExternalUrl(u){ return /^https?:\/\//i.test(u) || u.indexOf("//")===0; }
+    function normalizeExternalUrl(u){
+      var full = u.indexOf("//")===0 ? ("https:"+u) : u;
+      // netdna.bootstrapcdn.com (old BootstrapCDN) has been decommissioned; BootstrapCDN
+      // was folded into jsDelivr years ago. Rewrite old bootstrapcdn URLs to their
+      // jsDelivr equivalent so imports of older projects keep working.
+      var m = full.match(/^https?:\/\/(?:netdna\.)?bootstrapcdn\.com\/bootstrap\/([\d.]+)\/(css|js)\/(bootstrap[^\/]*)$/i);
+      if(m){ return "https://cdn.jsdelivr.net/npm/bootstrap@"+m[1]+"/dist/"+m[2]+"/"+m[3]; }
+      return full;
+    }
+
+    var cssTexts = [];
+    var externalCssUrls = [];
+    var linkEls = Array.prototype.slice.call(srcDoc.querySelectorAll('link[rel="stylesheet"]'));
+    for(var i=0;i<linkEls.length;i++){
+      var href = linkEls[i].getAttribute("href");
+      if(!href) continue;
+      if(isExternalUrl(href)){
+        // Don't try to fetch() external CSS: many origins (content://, sandboxed iframes)
+        // block cross-origin fetch/CORS. Instead, keep the real URL and let the preview
+        // <iframe> load it natively via a <link> tag, which is NOT subject to CORS.
+        externalCssUrls.push(normalizeExternalUrl(href));
+      } else {
+        var resolved = resolveZipPath(baseDir, href);
+        if(resolved && zip.file(resolved)){ cssTexts.push(await zip.file(resolved).async("string")); }
+      }
+    }
+    Array.prototype.forEach.call(srcDoc.querySelectorAll("style"), function(s){ cssTexts.push(s.textContent||""); });
+
+    var jsTexts = [];
+    var externalJsUrls = [];
+    var scriptEls = Array.prototype.slice.call(srcDoc.querySelectorAll("script"));
+    for(var j=0;j<scriptEls.length;j++){
+      var sEl = scriptEls[j], src = sEl.getAttribute("src");
+      if(src){
+        if(isExternalUrl(src)){
+          // Same reasoning as CSS above: keep the URL as a real <script src> tag instead
+          // of fetching its text, so the browser loads/executes it natively (no CORS issue).
+          externalJsUrls.push(normalizeExternalUrl(src));
+        } else {
+          var resolvedJs = resolveZipPath(baseDir, src);
+          if(resolvedJs && zip.file(resolvedJs)){ jsTexts.push(await zip.file(resolvedJs).async("string")); }
+        }
+      } else if(sEl.textContent && sEl.textContent.trim()){
+        jsTexts.push(sEl.textContent);
+      }
+    }
+    var allCss = cssTexts.join("\n");
+    var allJs = jsTexts.join("\n;\n");
+
+    setStatus("Analizando HTML/CSS con el motor del navegador...");
+    var projectName = (file.name||"Proyecto importado").replace(/\.zip$/i,"");
+    var newProject = await buildProjectFromParts(htmlText, allCss, allJs, projectName, externalCssUrls, externalJsUrls);
+    applyImportedProject(newProject, htmlPath);
+  }catch(err){
+    console.error(err);
+    alert("Error al importar el ZIP: " + err.message);
+    setStatus("Error al importar.");
+  }
+}
+
+/* ---- Path B: one or more loose files (.html [+ .css] [+ .js]), no zip needed.
+   Also covers a single .html with everything embedded inline. ---- */
+async function handleLooseFiles(files){
+  try{
+    var htmlFile = files.find(function(f){ return /\.html?$/i.test(f.name); });
+    if(!htmlFile){ alert("Selecciona al menos un archivo .html (puede incluir su .css y .js junto a él)."); return; }
+    setStatus("Leyendo archivos...");
+
+    var others = files.filter(function(f){ return f!==htmlFile; });
+    var fileMap = {}; // lowercase basename -> text content
+    for(var i=0;i<others.length;i++){
+      fileMap[others[i].name.toLowerCase()] = await readFileAsText(others[i]);
+    }
+    var used = {};
+    var htmlText = await readFileAsText(htmlFile);
+    var srcDoc = new DOMParser().parseFromString(htmlText, "text/html");
+
+    var cssTexts = [];
+    Array.prototype.forEach.call(srcDoc.querySelectorAll('link[rel="stylesheet"]'), function(linkEl){
+      var href = linkEl.getAttribute("href") || "";
+      var base = href.split("/").pop().toLowerCase();
+      if(base && fileMap[base]!==undefined){ cssTexts.push(fileMap[base]); used[base]=true; }
+    });
+    Array.prototype.forEach.call(srcDoc.querySelectorAll("style"), function(s){ cssTexts.push(s.textContent||""); });
+
+    var jsTexts = [];
+    Array.prototype.forEach.call(srcDoc.querySelectorAll("script"), function(sEl){
+      var src = sEl.getAttribute("src");
+      if(src){
+        var base = src.split("/").pop().toLowerCase();
+        if(base && fileMap[base]!==undefined){ jsTexts.push(fileMap[base]); used[base]=true; }
+      } else if(sEl.textContent && sEl.textContent.trim()){
+        jsTexts.push(sEl.textContent);
+      }
+    });
+    /* any uploaded .css/.js not explicitly referenced by the HTML: include anyway so nothing is lost */
+    Object.keys(fileMap).forEach(function(base){
+      if(used[base]) return;
+      if(/\.css$/i.test(base)) cssTexts.push(fileMap[base]);
+      else if(/\.js$/i.test(base)) jsTexts.push(fileMap[base]);
+    });
+
+    var allCss = cssTexts.join("\n");
+    var allJs = jsTexts.join("\n;\n");
+
+    setStatus("Analizando HTML/CSS con el motor del navegador...");
+    var projectName = htmlFile.name.replace(/\.html?$/i,"");
+    var newProject = await buildProjectFromParts(htmlText, allCss, allJs, projectName);
+    applyImportedProject(newProject, htmlFile.name);
+  }catch(err){
+    console.error(err);
+    alert("Error al importar los archivos: " + err.message);
+    setStatus("Error al importar.");
+  }
+}
+
+document.getElementById("btnImportZip").addEventListener("click", function(){
+  document.getElementById("zipInput").click();
+});
+document.getElementById("zipInput").addEventListener("change", function(){
+  var files = Array.prototype.slice.call(this.files||[]);
+  this.value = "";
+  if(!files.length) return;
+  if(files.length===1 && /\.zip$/i.test(files[0].name)){
+    handleZipFile(files[0]);
+  } else {
+    handleLooseFiles(files);
+  }
+});
+
+/* =========================================================
    TEMPLATES / TUTORIALS
 ========================================================= */
 var TEMPLATES = [
@@ -1654,6 +2004,7 @@ function renderAll(){
   renderHierarchy();
   renderInspector();
   renderVars();
+  renderImportedAssets();
   renderScripts();
   renderSavedList();
   updateViewport();
